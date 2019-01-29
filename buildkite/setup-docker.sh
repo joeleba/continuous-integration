@@ -48,6 +48,9 @@ EOF
   apt-get -qqy update
   apt-get -qqy install buildkite-agent
 
+  mkdir -p /var/lib/buildkite-agent/repocache
+  chown -R buildkite-agent:buildkite-agent /var/lib/buildkite-agent
+
   # Disable the Buildkite agent service, as the startup script has to mount /var/lib/buildkite-agent
   # first.
   systemctl disable buildkite-agent

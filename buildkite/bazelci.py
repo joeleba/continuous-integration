@@ -868,7 +868,23 @@ def common_build_flags(bep_file, platform):
         "--jobs=" + concurrent_jobs(platform),
         "--announce_rc",
         "--experimental_multi_threaded_digest",
+        "--experimental_repository_cache_hardlinks",
     ]
+
+    if platform == "windows":
+        flags += ["--repository_cache=D:/repocache", "--test_env=REPOSITORY_CACHE=D:/repocache"]
+    elif platform == "macos":
+        flags += [
+            "--repository_cache=/usr/local/var/repocache",
+            "--sandbox_writable_path=/usr/local/var/repocache",
+            "--test_env=REPOSITORY_CACHE=/usr/local/var/repocache",
+        ]
+    else:
+        flags += [
+            "--repository_cache=/var/lib/buildkite-agent/repocache",
+            "--sandbox_writable_path=/var/lib/buildkite-agent/repocache",
+            "--test_env=REPOSITORY_CACHE=/var/lib/buildkite-agent/repocache",
+        ]
 
     if platform != "windows":
         flags += ["--sandbox_tmpfs_path=/tmp"]
@@ -1129,7 +1145,7 @@ def create_docker_step(label, image, commands=None):
                 "propagate-environment": True,
                 "volumes": [
                     ".:/workdir",
-                    "{0}:{0}".format("/var/lib/buildkite-agent/builds"),
+                    "{0}:{0}".format("/var/lib/buildkite-agent"),
                     "{0}:{0}:ro".format("/var/lib/bazelbuild"),
                 ],
                 "workdir": "/workdir",
