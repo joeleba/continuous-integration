@@ -15,6 +15,11 @@
 # limitations under the License.
 """
 Generates a daily HTML report for the projects.
+The steps:
+  1. Get the necessary data from Storage for projects/date.
+  2. Manipulate the data to a format suitable for graphs.
+  3. Generate a HTML report containing the graphs.
+  4. Upload the generated HTMLs to GCP Storage.
 """
 import argparse
 import collections
@@ -37,6 +42,7 @@ def _platform_path_str(posix_path):
     return posix_path
 
 # For the event markers in JSON profiles.
+# TODO(leba): Include JSON profiles data.
 EVENTS_ORDER = [
     "Launch Blaze", "Initialize command", "Load packages",
     "Analyze dependencies", "Analyze licenses", "Prepare for build",
@@ -76,6 +82,8 @@ def _get_dated_subdir_for_project(project, date):
 
 
 def _prepare_data_for_graph(performance_data):
+  """Massage the data to fit a format suitable for graph generation.
+  """
   ordered_commit_to_readings = collections.OrderedDict()
   for entry in performance_data:
     bazel_commit = entry["bazel_commit"]
@@ -105,6 +113,8 @@ def _prepare_data_for_graph(performance_data):
 
 
 def _single_graph(metric, metric_label, data, platform):
+  """Returns the HTML <div> component of a single graph.
+  """
   title = "[{}] Bar Chart of {} vs Bazel commits".format(platform, metric_label)
   vAxis = "Bazel Commits (chronological order)"
   hAxis = metric_label
@@ -145,6 +155,8 @@ def _single_graph(metric, metric_label, data, platform):
     chart_id=chart_id)
 
 def _full_report(date, graph_components):
+  """Returns the full HTML of a complete report, from the graph components.
+  """
   return '''
 <html>
   <head>
@@ -162,7 +174,7 @@ def _full_report(date, graph_components):
 
 
 def _generate_report_for_date(project, date, storage_bucket):
-  """Generate a html report for the specified date & project.
+  """Generates a html report for the specified date & project.
 
   Args:
     project: the project to generate report for. Check out bazel_bench.py.
@@ -218,7 +230,7 @@ def main(args=None):
     args = sys.argv[1:]
 
   parser = argparse.ArgumentParser(description="Bazel Bench Daily Report")
-  parser.add_argument("--date", type=str)
+  parser.add_argument("--date", type=str, help="Date in YYYY-mm-dd format.")
   parser.add_argument(
       "--project",
       action="append",
