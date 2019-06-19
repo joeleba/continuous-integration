@@ -68,7 +68,7 @@ def _get_dated_subdir_for_project(project, date):
     return "{}/{}".format(project, date.strftime("%Y/%m/%d"))
 
 
-def _prepare_data_for_graph(performance_data):
+def _prepare_data_for_graph(performance_data, aggr_json_profile):
     """Massage the data to fit a format suitable for graph generation.
     TODO(leba): Add hyperlink to each bazel commit.
     """
@@ -174,7 +174,12 @@ def _generate_report_for_date(project, date, storage_bucket):
         performance_data = _load_csv_from_remote_file(
             "{}/{}".format(root_storage_url, platform_measurement["perf_data"])
         )
-        wall_data, memory_data = _prepare_data_for_graph(performance_data)
+        aggr_json_profile = _load_csv_from_remote_file(
+            "{}/{}".format(root_storage_url, platform_measurement["json_profiles_aggr"])
+        )
+
+        wall_data, memory_data = _prepare_data_for_graph(
+            performance_data, aggr_json_profile)
 
         # Generate a graph for that platform.
         graph_components.append(
