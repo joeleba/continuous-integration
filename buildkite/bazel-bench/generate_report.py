@@ -190,7 +190,7 @@ def _single_graph(metric, metric_label, data, platform):
       chart.draw(data, options);
   }}
   </script>
-<div id="{chart_id}"></div>
+<div id="{chart_id}" style="height: 800px"></div>
 """.format(
         title=title, data=data, hAxis=hAxis, vAxis=vAxis, chart_id=chart_id
     )
@@ -209,8 +209,12 @@ def _full_report(project, date, graph_components):
     <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/css/bootstrap.min.css" integrity="sha384-ggOyR0iXCbMQv3Xipma34MD+dH/1fQ784/j6cY/iJTQUOhcWr7x9JvoRxT2MZw1T" crossorigin="anonymous">
   </head>
   <body style="font-family: Roboto;">
-    <h1>[{project}] Report for {date}</h1>
     <div class="container-fluid">
+      <div class="row">
+        <div class="col-sm-12">
+          <h1>[{project}] Report for {date}</h1>
+        </div>
+      </div>
       {graphs}
     </div>
   </body>
@@ -267,7 +271,10 @@ def _generate_report_for_date(project, date, storage_bucket):
         )
         graph_components.append(
                 _row_component(
-                        "<h2>{}</h2>".format(platform_measurement["platform"])))
+                        _col_component(
+                                "col-sm-5",
+                                "<h2>{}</h2>".format(
+                                        platform_measurement["platform"]))))
         graph_components.append(_row_component("\n".join(row_content)))
 
     content = _full_report(project, date, "\n".join(graph_components))
