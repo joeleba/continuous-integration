@@ -38,7 +38,16 @@ import urllib.request
 # TODO(leba): Include JSON profiles data.
 TMP = tempfile.gettempdir()
 REPORTS_DIRECTORY = os.path.join(TMP, ".bazel_bench", "reports")
-
+EVENTS_ORDER = [
+    "Launch Blaze",
+    "Initialize command",
+    "Load packages",
+    "Analyze dependencies",
+    "Analyze licenses",
+    "Prepare for build",
+    "Build artifacts",
+    "Complete build",
+]
 
 def _upload_to_storage(src_file_path, storage_bucket, destination_dir):
     """Uploads the file from src_file_path to the specified location on Storage.
@@ -48,6 +57,7 @@ def _upload_to_storage(src_file_path, storage_bucket, destination_dir):
 
 
 def _load_csv_from_remote_file(http_url):
+    print(http_url)
     with urllib.request.urlopen(http_url) as resp:
         reader = csv.DictReader(io.TextIOWrapper(resp))
         return [row for row in reader]
@@ -68,10 +78,44 @@ def _get_dated_subdir_for_project(project, date):
     return "{}/{}".format(project, date.strftime("%Y/%m/%d"))
 
 
+def _get_proportion_breakdown(aggr_json_profile):
+    bazel_commit_to_phases = {}
+    for entry in aggr_json_profile:
+        bazel_commit = entry["bazel_source"]
+        if bazel_commit not in bazel_commit_to_phases:
+            bazel_commit_to_phases[bazel_commit] = []
+        bazel_commit_to_phases[bazel_commit].append({
+            "name": entry["name"],
+            "dur": entry["dur"]
+        })
+
+    bazel_commit_to_phase_proportion = {}
+    for bazel_commit in bazel_commit_to_phases.keys():
+        total_time = sum(
+                [float(entry["dur"]) for entry in bazel_commit_to_phases[bazel_commit]])
+        bazel_commit_to_phase_proportion[bazel_commit] = {
+                entry["name"]: float(entry["dur"]) / total_time
+                for entry in bazel_commit_to_phases[bazel_commit]}
+
+    return bazel_commit_to_phase_proportion
+
+
+def _fit_data_to_phase_proportion(reading, proportion_breakdown):
+    result = []
+    for phase in EVENTS_ORDER:
+        if phase not in proportion_breakdown:
+            result.append(0)
+        else:
+            result.append(reading * proportion_breakdown[phase])
+    return result
+
+
 def _prepare_data_for_graph(performance_data, aggr_json_profile):
     """Massage the data to fit a format suitable for graph generation.
     TODO(leba): Add hyperlink to each bazel commit.
     """
+    bazel_commit_to_phase_proportion = _get_proportion_breakdown(
+            aggr_json_profile)
     ordered_commit_to_readings = collections.OrderedDict()
     for entry in performance_data:
         bazel_commit = entry["bazel_commit"]
@@ -84,14 +128,31 @@ def _prepare_data_for_graph(performance_data, aggr_json_profile):
         ordered_commit_to_readings[bazel_commit]["wall_readings"].append(float(entry["wall"]))
         ordered_commit_to_readings[bazel_commit]["memory_readings"].append(float(entry["memory"]))
 
-    wall_data = [["Bazel Commit", "Wall Time (s)"]]
+    wall_data = [["Bazel Commit"] + EVENTS_ORDER]
     memory_data = [["Bazel Commit", "Memory (MB)"]]
 
     for obj in ordered_commit_to_readings.values():
-        wall_data.append([obj["bazel_commit"], statistics.median(obj["wall_readings"])])
+        wall_data.append(
+                [obj["bazel_commit"]]
+                + _fit_data_to_phase_proportion(
+                        statistics.median(
+                                obj["wall_readings"]),
+                        bazel_commit_to_phase_proportion[bazel_commit]))
         memory_data.append([obj["bazel_commit"], statistics.median(obj["memory_readings"])])
 
     return wall_data, memory_data
+
+
+def _row_component(content):
+    return """
+<div class="row">{content}</div>
+""".format(content=content)
+
+
+def _col_component(col_class, content):
+    return """
+<div class="{col_class}">{content}</div>
+""".format(col_class=col_class, content=content)
 
 
 def _single_graph(metric, metric_label, data, platform):
@@ -122,13 +183,14 @@ def _single_graph(metric, metric_label, data, platform):
           y: {{
             0: {{ side: "right"}}
           }}
-        }}
+        }},
+        isStacked: true
       }};
       var chart = new google.visualization.BarChart(document.getElementById("{chart_id}"));
       chart.draw(data, options);
   }}
   </script>
-<div id="{chart_id}" style="width: 800px; height: 500px;"></div>
+<div id="{chart_id}"></div>
 """.format(
         title=title, data=data, hAxis=hAxis, vAxis=vAxis, chart_id=chart_id
     )
@@ -144,10 +206,13 @@ def _full_report(project, date, graph_components):
     <script type="text/javascript">
       google.charts.load("current", {{ packages:["corechart"] }});
     </script>
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/css/bootstrap.min.css" integrity="sha384-ggOyR0iXCbMQv3Xipma34MD+dH/1fQ784/j6cY/iJTQUOhcWr7x9JvoRxT2MZw1T" crossorigin="anonymous">
   </head>
   <body style="font-family: Roboto;">
     <h1>[{project}] Report for {date}</h1>
-    {graphs}
+    <div class="container-fluid">
+      {graphs}
+    </div>
   </body>
 </html>
 """.format(
@@ -175,30 +240,35 @@ def _generate_report_for_date(project, date, storage_bucket):
             "{}/{}".format(root_storage_url, platform_measurement["perf_data"])
         )
         aggr_json_profile = _load_csv_from_remote_file(
-            "{}/{}".format(root_storage_url, platform_measurement["json_profiles_aggr"])
+            "{}/{}".format(root_storage_url, platform_measurement["aggr_json_profiles"])
         )
 
         wall_data, memory_data = _prepare_data_for_graph(
             performance_data, aggr_json_profile)
 
         # Generate a graph for that platform.
-        graph_components.append(
-            _single_graph(
+        row_content = []
+        row_content.append(
+            _col_component("col-sm-10", _single_graph(
                 metric="wall",
                 metric_label="Wall Time (s)",
                 data=wall_data,
                 platform=platform_measurement["platform"],
-            )
+            ))
         )
 
-        graph_components.append(
-            _single_graph(
+        row_content.append(
+            _col_component("col-sm-10", _single_graph(
                 metric="memory",
                 metric_label="Memory (MB)",
                 data=memory_data,
                 platform=platform_measurement["platform"],
-            )
+            ))
         )
+        graph_components.append(
+                _row_component(
+                        "<h2>{}</h2>".format(platform_measurement["platform"])))
+        graph_components.append(_row_component("\n".join(row_content)))
 
     content = _full_report(project, date, "\n".join(graph_components))
 
@@ -211,10 +281,10 @@ def _generate_report_for_date(project, date, storage_bucket):
     with open(report_tmp_file, "w") as fo:
         fo.write(content)
 
-    if storage_bucket:
-        _upload_to_storage(report_tmp_file, storage_bucket, dated_subdir + "/report.html")
-    else:
-        print(content)
+    #if storage_bucket:
+#        _upload_to_storage(report_tmp_file, storage_bucket, dated_subdir + "/report.html")
+    #else:
+    #    print(content)
 
 
 def main(args=None):
