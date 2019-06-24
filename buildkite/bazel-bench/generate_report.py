@@ -78,6 +78,33 @@ def _get_dated_subdir_for_project(project, date):
     return "{}/{}".format(project, date.strftime("%Y/%m/%d"))
 
 
+def _get_bazel_github_a_component(commit):
+    return '<a href="{}">{}</a>'.format(
+            "https://github.com/bazelbuild/bazel/commit/" + commit, commit)
+
+def _get_file_list_from_gs(bucket_name, gs_subdir):
+    args = ["gsutil", "ls", "gs://{}/{}".format(bucket_name, gs_subdir)]
+    command_output = subprocess.check_output(args)
+    # The last element is just an empty string.
+    decoded = command_output.decode("utf-8").split("\n")[:-1]
+
+    return [line.strip("'").replace(
+            "gs://{}".format(bucket_name),
+            "https://{}.storage.googleapis.com".format(bucket_name))
+            for line in decoded]
+
+
+def _get_file_list_component(bucket_name, gs_subdir):
+    links = _get_file_list_from_gs(bucket_name, gs_subdir)
+    li_components = [
+            '<li><a href="{}">{}</a></li>'.format(link, os.path.basename(link))
+            for link in links]
+    return """
+<h3>Raw files:</h3>
+<ul>{}</ul>
+""".format("\n".join(li_components))
+
+
 def _get_proportion_breakdown(aggr_json_profile):
     bazel_commit_to_phases = {}
     for entry in aggr_json_profile:
@@ -110,6 +137,10 @@ def _fit_data_to_phase_proportion(reading, proportion_breakdown):
     return result
 
 
+def _short_form(commit):
+    return commit[:7]
+
+
 def _prepare_data_for_graph(performance_data, aggr_json_profile):
     """Massage the data to fit a format suitable for graph generation.
     TODO(leba): Add hyperlink to each bazel commit.
@@ -132,13 +163,14 @@ def _prepare_data_for_graph(performance_data, aggr_json_profile):
     memory_data = [["Bazel Commit", "Memory (MB)"]]
 
     for obj in ordered_commit_to_readings.values():
+        commit = _short_form(obj["bazel_commit"])
         wall_data.append(
-                [obj["bazel_commit"]]
+                [commit]
                 + _fit_data_to_phase_proportion(
                         statistics.median(
                                 obj["wall_readings"]),
                         bazel_commit_to_phase_proportion[bazel_commit]))
-        memory_data.append([obj["bazel_commit"], statistics.median(obj["memory_readings"])])
+        memory_data.append([commit, statistics.median(obj["memory_readings"])])
 
     return wall_data, memory_data
 
@@ -153,6 +185,24 @@ def _col_component(col_class, content):
     return """
 <div class="{col_class}">{content}</div>
 """.format(col_class=col_class, content=content)
+
+
+def _commits_component(performance_data):
+    # Bazel commits, in chronological order.
+    sorted_bazel_commits = []
+    for entry in performance_data:
+        if entry["bazel_commit"] not in sorted_bazel_commits:
+            sorted_bazel_commits.append(entry["bazel_commit"])
+
+    li_components = "\n".join(
+            ['<li>{}</li>'.format(_get_bazel_github_a_component(commit), commit)
+             for commit in sorted_bazel_commits])
+    return """
+<h2>Commits:</h2>
+<ul>
+    {}
+</ul>
+""".format(li_components)
 
 
 def _single_graph(metric, metric_label, data, platform):
@@ -238,18 +288,27 @@ def _generate_report_for_date(project, date, storage_bucket):
     metadata = _load_json_from_remote_file(metadata_file_url)
 
     graph_components = []
+    added_commits_component = False
     for platform_measurement in metadata["platforms"]:
         # Get the data
         performance_data = _load_csv_from_remote_file(
             "{}/{}".format(root_storage_url, platform_measurement["perf_data"])
         )
+        if not added_commits_component:
+            graph_components.append(
+                    _row_component(
+                            _col_component(
+                                    "col-sm-10",
+                                    _commits_component(performance_data))))
+            added_commits_component = True
+
         aggr_json_profile = _load_csv_from_remote_file(
             "{}/{}".format(root_storage_url, platform_measurement["aggr_json_profiles"])
         )
 
         wall_data, memory_data = _prepare_data_for_graph(
             performance_data, aggr_json_profile)
-
+        platform = platform_measurement["platform"]
         # Generate a graph for that platform.
         row_content = []
         row_content.append(
@@ -257,7 +316,7 @@ def _generate_report_for_date(project, date, storage_bucket):
                 metric="wall",
                 metric_label="Wall Time (s)",
                 data=wall_data,
-                platform=platform_measurement["platform"],
+                platform=platform,
             ))
         )
 
@@ -266,16 +325,25 @@ def _generate_report_for_date(project, date, storage_bucket):
                 metric="memory",
                 metric_label="Memory (MB)",
                 data=memory_data,
-                platform=platform_measurement["platform"],
+                platform=platform,
             ))
         )
+
         graph_components.append(
                 _row_component(
                         _col_component(
                                 "col-sm-5",
-                                "<h2>{}</h2>".format(
-                                        platform_measurement["platform"]))))
+                                "<h2>{}</h2>".format(platform))))
+        graph_components.append(
+                _row_component(
+                        _col_component(
+                                "col-sm-5",
+                                _get_file_list_component(
+                                        storage_bucket,
+                                        "{}/{}".format(
+                                                dated_subdir, platform)))))
         graph_components.append(_row_component("\n".join(row_content)))
+
 
     content = _full_report(project, date, "\n".join(graph_components))
 
