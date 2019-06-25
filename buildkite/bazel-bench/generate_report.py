@@ -94,15 +94,16 @@ def _get_file_list_from_gs(bucket_name, gs_subdir):
             for line in decoded]
 
 
-def _get_file_list_component(bucket_name, gs_subdir):
+def _get_file_list_component(bucket_name, dated_subdir, platform):
+    gs_subdir = "{}/{}".format(dated_subdir, platform)
     links = _get_file_list_from_gs(bucket_name, gs_subdir)
     li_components = [
             '<li><a href="{}">{}</a></li>'.format(link, os.path.basename(link))
             for link in links]
     return """
-<h3>Raw files:</h3>
+<b>{}</b>
 <ul>{}</ul>
-""".format("\n".join(li_components))
+""".format(platform, "\n".join(li_components))
 
 
 def _get_proportion_breakdown(aggr_json_profile):
@@ -198,7 +199,7 @@ def _commits_component(performance_data):
             ['<li>{}</li>'.format(_get_bazel_github_a_component(commit), commit)
              for commit in sorted_bazel_commits])
     return """
-<h2>Commits:</h2>
+<b>Commits:</b>
 <ul>
     {}
 </ul>
@@ -221,12 +222,17 @@ def _single_graph(metric, metric_label, data, platform):
 
       var options = {{
         title: "{title}",
+        titleTextStyle: {{ color: "gray" }},
         hAxis: {{
           title: "{hAxis}",
+          titleTextStyle: {{ color: "darkgray" }},
+          textStyle: {{ color: "darkgray" }},
           minValue: 0,
         }},
         vAxis: {{
-          title: "{vAxis}"
+          title: "{vAxis}",
+          titleTextStyle: {{ color: "darkgray" }},
+          textStyle: {{ color: "darkgray" }},
         }},
         bars: "horizontal",
         axes: {{
@@ -234,19 +240,30 @@ def _single_graph(metric, metric_label, data, platform):
             0: {{ side: "right"}}
           }}
         }},
-        isStacked: true
+        chartArea: {{ width: "70%"}},
+        isStacked: true,
+        trendlines: {{
+            0: {{
+              type: 'linear',
+              color: 'green',
+              lineWidth: 3,
+              opacity: 0.3,
+              showR2: true,
+              visibleInLegend: true
+            }}
+        }},
       }};
       var chart = new google.visualization.BarChart(document.getElementById("{chart_id}"));
       chart.draw(data, options);
   }}
   </script>
-<div id="{chart_id}" style="height: 800px"></div>
+<div id="{chart_id}" style="min-height: 500px"></div>
 """.format(
         title=title, data=data, hAxis=hAxis, vAxis=vAxis, chart_id=chart_id
     )
 
 
-def _full_report(project, date, graph_components):
+def _full_report(project, date, command, graph_components, raw_files_components):
     """Returns the full HTML of a complete report, from the graph components.
     """
     return """
@@ -257,20 +274,37 @@ def _full_report(project, date, graph_components):
       google.charts.load("current", {{ packages:["corechart"] }});
     </script>
     <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/css/bootstrap.min.css" integrity="sha384-ggOyR0iXCbMQv3Xipma34MD+dH/1fQ784/j6cY/iJTQUOhcWr7x9JvoRxT2MZw1T" crossorigin="anonymous">
+    <style>
+      h1 {{ font-size: 2em; }}
+      h2 {{ font-size: 1.2em; color: gray; }}
+      h2.underlined {{ border-bottom: 2px dotted lightgray; }}
+    </style>
   </head>
-  <body style="font-family: Roboto;">
+  <body style="font-family: Helvetica;">
     <div class="container-fluid">
       <div class="row">
         <div class="col-sm-12">
           <h1>[{project}] Report for {date}</h1>
+          </hr>
+        </div>
+        <div class="col-sm-12">
+          <b>Command: </b><span style="font-family: monospace">{command}</span>
         </div>
       </div>
       {graphs}
+      <h2>Raw Files:</h2>
+      <div class="row">
+        {files}
+      </div>
     </div>
   </body>
 </html>
 """.format(
-        project=project, date=date, graphs=graph_components
+        project=project,
+        date=date,
+        command=command,
+        graphs=graph_components,
+        files=raw_files_components
     )
 
 
@@ -288,6 +322,7 @@ def _generate_report_for_date(project, date, storage_bucket):
     metadata = _load_json_from_remote_file(metadata_file_url)
 
     graph_components = []
+    raw_files_components = []
     added_commits_component = False
     for platform_measurement in metadata["platforms"]:
         # Get the data
@@ -312,7 +347,7 @@ def _generate_report_for_date(project, date, storage_bucket):
         # Generate a graph for that platform.
         row_content = []
         row_content.append(
-            _col_component("col-sm-10", _single_graph(
+            _col_component("col-sm-6", _single_graph(
                 metric="wall",
                 metric_label="Wall Time (s)",
                 data=wall_data,
@@ -321,7 +356,7 @@ def _generate_report_for_date(project, date, storage_bucket):
         )
 
         row_content.append(
-            _col_component("col-sm-10", _single_graph(
+            _col_component("col-sm-6", _single_graph(
                 metric="memory",
                 metric_label="Memory (MB)",
                 data=memory_data,
@@ -333,19 +368,23 @@ def _generate_report_for_date(project, date, storage_bucket):
                 _row_component(
                         _col_component(
                                 "col-sm-5",
-                                "<h2>{}</h2>".format(platform))))
-        graph_components.append(
-                _row_component(
-                        _col_component(
-                                "col-sm-5",
-                                _get_file_list_component(
-                                        storage_bucket,
-                                        "{}/{}".format(
-                                                dated_subdir, platform)))))
+                                '<h2 class="underlined">{}</h2></hr>'.format(platform))))
+        raw_files_components.append(
+                _col_component(
+                        "col-sm-10",
+                        _get_file_list_component(
+                                storage_bucket,
+                                dated_subdir,
+                                platform)))
         graph_components.append(_row_component("\n".join(row_content)))
 
 
-    content = _full_report(project, date, "\n".join(graph_components))
+    content = _full_report(
+            project,
+            date,
+            command=metadata["command"],
+            graph_components="\n".join(graph_components),
+            raw_files_components="\n".join(raw_files_components))
 
     if not os.path.exists(REPORTS_DIRECTORY):
         os.makedirs(REPORTS_DIRECTORY)
