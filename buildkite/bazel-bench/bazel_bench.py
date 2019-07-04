@@ -47,7 +47,7 @@ BAZEL_REPOSITORY = "https://github.com/bazelbuild/bazel.git"
 DATA_DIRECTORY = os.path.join(TMP, ".bazel-bench", "out")
 BAZEL_BENCH_RESULT_FILENAME = "perf_data.csv"
 AGGR_JSON_PROFILES_FILENAME = "aggr_json_profiles.csv"
-PLATFORMS_WHITELIST = ['macos', 'ubuntu1604', 'ubuntu1804', 'rbe_ubuntu1604']
+PLATFORMS_WHITELIST = ['macos']#, 'ubuntu1604', 'ubuntu1804', 'rbe_ubuntu1604']
 REPORT_GENERATION_PLATFORM = 'ubuntu1804'
 
 
@@ -77,20 +77,20 @@ def _get_bazel_commits(date, bazel_repo_path):
     Return:
       A list of string (commit hashes).
     """
-    date_plus_one = date + datetime.timedelta(days=1)
-    args = [
-        "git",
-        "log",
-        "--pretty=format:'%H'",
-        "--after='%s'" % date.strftime("%Y-%m-%d 00:00"),
-        "--until='%s'" % date_plus_one.strftime("%Y-%m-%d 00:00"),
-        "--reverse",
-    ]
-    command_output = subprocess.check_output(args, cwd=bazel_repo_path)
-    decoded = command_output.decode("utf-8").split("\n")
-
-    return [line.strip("'") for line in decoded]
-
+    return ['11e03574d2afa977d4319589a9c043f73718d904','01e6e05a35633df92cafc20b28eac15cd1aefa09','1a3d4c452379d43513cac7440561ca263cf9ac5b','e92ee9e7fdd0f93a51bb36732ae8f30e2b4b69ec','b3e8152097fff0caa8b3fe1853354f85108ce0bb']
+#    date_plus_one = date + datetime.timedelta(days=1)
+#    args = [
+#        "git",
+#        "log",
+#        "--pretty=format:'%H'",
+#        "--after='%s'" % date.strftime("%Y-%m-%d 00:00"),
+#        "--until='%s'" % date_plus_one.strftime("%Y-%m-%d 00:00"),
+#        "--reverse",
+#    ]
+#    command_output = subprocess.check_output(args, cwd=bazel_repo_path)
+#    decoded = command_output.decode("utf-8").split("\n")
+#    #return [line.strip("'") for line in decoded]
+#
 
 def _get_platforms(project_name, whitelist):
     """Get the platforms on which this project is run on BazelCI.
