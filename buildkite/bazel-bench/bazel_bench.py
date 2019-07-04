@@ -47,7 +47,7 @@ BAZEL_REPOSITORY = "https://github.com/bazelbuild/bazel.git"
 DATA_DIRECTORY = os.path.join(TMP, ".bazel-bench", "out")
 BAZEL_BENCH_RESULT_FILENAME = "perf_data.csv"
 AGGR_JSON_PROFILES_FILENAME = "aggr_json_profiles.csv"
-PLATFORMS_WHITELIST = ['macos']#, 'ubuntu1604', 'ubuntu1804', 'rbe_ubuntu1604']
+PLATFORMS_WHITELIST = ['macos', 'ubuntu1804']#, 'ubuntu1604', 'ubuntu1804', 'rbe_ubuntu1604']
 REPORT_GENERATION_PLATFORM = 'ubuntu1804'
 
 
