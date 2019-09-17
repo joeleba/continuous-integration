@@ -55,7 +55,7 @@ BB_ROOT = os.path.join(os.path.expanduser("~"), ".bazel-bench")
 BAZEL_BINARY_BASE_PATH = os.path.join(BB_ROOT, "bazel-bin")
 
 def _bazel_bench_env_setup_command():
-  mkdir = "mkdir -p %s" % BAZEL_BINARY_BASE_PATH
+#  mkdir = "mkdir -p %s" % BAZEL_BINARY_BASE_PATH
   download_binaries = " ".join(
       [
           "gsutil",
