@@ -55,19 +55,17 @@ BB_ROOT = os.path.join(os.path.expanduser("~"), ".bazel-bench")
 BAZEL_BINARY_BASE_PATH = os.path.join(BB_ROOT, "bazel-bin")
 
 def _bazel_bench_env_setup_command(platform):
-  if platform != "macos":
-    mkdir = "mkdir -p %s" % BAZEL_BINARY_BASE_PATH
-  download_binaries = " ".join(
-      [
-          "gsutil",
-          "-m",
-          "cp",
-          "-r",
-          "gs://perf.bazel.build/bazelbins/*",
-          "{}/".format(BAZEL_BINARY_BASE_PATH)
-      ]
+  bazel_bench_env_setup_py_url = (
+      "https://raw.githubusercontent.com/joeleba/continuous-integration/turbine-bm/buildkite/bazel-bench/bazel_bench_env_setup.py?%s"
+      % int(time.time())
   )
-  return [mkdir, download_binaries]
+  download_command = 'curl -sS "%s" -o bazel_bench_env_setup.py' % bazel_bench_env_setup_py_url
+  exec_command = "%s bazel_bench_env_setup.py --platform=%s --gs_uri=%s" % (
+      bazelci.PLATFORMS[platform]["python"],
+      platform,
+      "gs://perf.bazel.build/bazelbins/*",
+  )
+  return [download_command, exec_command]
 
 
 def _get_platforms(project_name, whitelist):
