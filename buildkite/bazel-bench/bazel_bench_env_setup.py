@@ -57,7 +57,7 @@ def main(argv=None):
     subprocess.call(["ls", "-l", "bazelbins/"])
     subprocess.call(["ls", "-l"])
     subprocess.call(["pwd"])
-    subprocess.call(["chmod", "+x", "./bazelbins/*"])
+    subprocess.call(["chmod", "-R", "+x", "bazelbins"])
 
 if __name__ == "__main__":
     sys.exit(main())
