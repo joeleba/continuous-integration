@@ -54,8 +54,9 @@ BB_ROOT = os.path.join(os.path.expanduser("~"), ".bazel-bench")
 # The path to the directory that stores the bazel binaries.
 BAZEL_BINARY_BASE_PATH = os.path.join(BB_ROOT, "bazel-bin")
 
-def _bazel_bench_env_setup_command():
-#  mkdir = "mkdir -p %s" % BAZEL_BINARY_BASE_PATH
+def _bazel_bench_env_setup_command(platform):
+  if platform != "macos":
+    mkdir = "mkdir -p %s" % BAZEL_BINARY_BASE_PATH
   download_binaries = " ".join(
       [
           "gsutil",
@@ -173,7 +174,7 @@ def _ci_step_for_platform_and_commits(
     )
     commands = (
         [bazelci.fetch_bazelcipy_command()]
-        + _bazel_bench_env_setup_command()
+        + _bazel_bench_env_setup_command(platform)
         + [bazel_bench_command, upload_output_files_storage_command]
     )
     label = (
