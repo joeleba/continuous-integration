@@ -37,7 +37,6 @@ def main(argv=None):
     parser.add_argument("--gs_uri", type=str)
     args = parser.parse_args(argv)
 
-    bazel_binaries = args.bazel_binaries.split(",")
     #bazel_bin_dir = BAZEL_BINARY_BASE_PATH
 
     if not os.path.exists(BAZEL_BINARY_BASE_PATH):
