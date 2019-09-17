@@ -37,17 +37,19 @@ def main(argv=None):
     parser.add_argument("--gs_uri", type=str)
     args = parser.parse_args(argv)
 
-    #bazel_bin_dir = BAZEL_BINARY_BASE_PATH
+    binary_platform = (args.platform if args.platform in ["macos", "windows"]
+                       else bazelci.LINUX_BINARY_PLATFORM)
+    bazel_bin_dir = BAZEL_BINARY_BASE_PATH + "/" + binary_platform
 
-    if not os.path.exists(BAZEL_BINARY_BASE_PATH):
-      os.makedirs(BAZEL_BINARY_BASE_PATH)
-    args = [
-        "gsutil",
-        "-m",
-        "cp",
-        "-r",
-        "gs://perf.bazel.build/bazelbins/*",
-        "{}/".format(BAZEL_BINARY_BASE_PATH)
+    if not os.path.exists(bazel_bin_dir):
+      os.makedirs(bazel_bin_dir)
+    args =  [
+          "gsutil",
+          "-m",
+          "cp",
+          "-r",
+          "gs://perf.bazel.build/bazelbins/*",
+          "{}/".format(bazel_bin_dir)
     ]
     subprocess.call(args)
 
