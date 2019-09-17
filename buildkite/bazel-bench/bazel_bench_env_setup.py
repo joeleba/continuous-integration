@@ -37,21 +37,25 @@ def main(argv=None):
     parser.add_argument("--gs_uri", type=str)
     args = parser.parse_args(argv)
 
-    bazel_bin_dir = BAZEL_BINARY_BASE_PATH
+    #bazel_bin_dir = BAZEL_BINARY_BASE_PATH
 
-    if not os.path.exists(bazel_bin_dir):
-      os.makedirs(bazel_bin_dir)
+    #if not os.path.exists(bazel_bin_dir):
+    #  os.makedirs(bazel_bin_dir)
+    
+    subprocess.call(["mkdir", "bazelbins"])
+
     args =  [
           "gsutil",
           "-m",
           "cp",
           "-r",
           "gs://perf.bazel.build/bazelbins/*",
-          "{}/".format(bazel_bin_dir)
+          "bazelbins/"
     ]
+    print(args)
     subprocess.call(args)
-    subprocess.call(["ls", "-lh", "{}/*".format(bazel_bin_dir)])
-    subprocess.call(["chmod", "+x", "{}/*".format(bazel_bin_dir)])
+    subprocess.call(["ls", "-l", "bazelbins/"])
+    subprocess.call(["chmod", "+x", "bazelbins/*"])
 
 if __name__ == "__main__":
     sys.exit(main())

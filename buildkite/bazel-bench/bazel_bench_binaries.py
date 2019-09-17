@@ -50,9 +50,7 @@ AGGR_JSON_PROFILES_FILENAME = "aggr_json_profiles.csv"
 PLATFORMS_WHITELIST = ['macos', 'ubuntu1604', 'ubuntu1804', 'rbe_ubuntu1604']
 REPORT_GENERATION_PLATFORM = 'ubuntu1804'
 STARTER_JOB_PLATFORM = 'ubuntu1804'
-BB_ROOT = os.path.join(os.path.expanduser("~"), ".bazel-bench")
 # The path to the directory that stores the bazel binaries.
-BAZEL_BINARY_BASE_PATH = os.path.join(BB_ROOT, "bazel-bin")
 
 def _bazel_bench_env_setup_command(platform):
   bazel_bench_env_setup_py_url = (
@@ -311,7 +309,7 @@ def main(args=None):
         else datetime.date.today()
     )
     bazel_binaries = parsed_args.bazel_binaries.split(",")
-    bazel_binaries_paths = ["{}/{}".format(BAZEL_BINARY_BASE_PATH, bazel_binary) for bazel_binary in bazel_binaries]
+    bazel_binaries_paths = ["bazelbins/{}".format(bazel_binary) for bazel_binary in bazel_binaries]
 
     bazel_clone_path = bazelci.clone_git_repository(
         BAZEL_REPOSITORY, STARTER_JOB_PLATFORM)
