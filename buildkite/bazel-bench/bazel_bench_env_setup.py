@@ -50,6 +50,7 @@ def main(argv=None):
           "{}/".format(bazel_bin_dir)
     ]
     subprocess.call(args)
+    subprocess.call(["ls", "-lh", "{}/*".format(bazel_bin_dir)])
     subprocess.call(["chmod", "+x", "{}/*".format(bazel_bin_dir)])
 
 if __name__ == "__main__":
