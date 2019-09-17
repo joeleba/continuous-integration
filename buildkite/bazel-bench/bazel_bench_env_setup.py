@@ -37,9 +37,7 @@ def main(argv=None):
     parser.add_argument("--gs_uri", type=str)
     args = parser.parse_args(argv)
 
-    binary_platform = (args.platform if args.platform in ["macos", "windows"]
-                       else bazelci.LINUX_BINARY_PLATFORM)
-    bazel_bin_dir = BAZEL_BINARY_BASE_PATH + "/" + binary_platform
+    bazel_bin_dir = BAZEL_BINARY_BASE_PATH
 
     if not os.path.exists(bazel_bin_dir):
       os.makedirs(bazel_bin_dir)
@@ -52,6 +50,7 @@ def main(argv=None):
           "{}/".format(bazel_bin_dir)
     ]
     subprocess.call(args)
+    subprocess.call(["chmod", "+x", "{}/*".format(bazel_bin_dir)])
 
 if __name__ == "__main__":
     sys.exit(main())
