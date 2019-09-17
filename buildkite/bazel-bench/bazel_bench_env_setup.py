@@ -34,7 +34,23 @@ def main(argv=None):
     parser = argparse.ArgumentParser(description="Bazel Bench Environment Setup")
     parser.add_argument("--platform", type=str)
     parser.add_argument("--bazel_commits", type=str)
+    parser.add_argument("--bazel_binaries", type=str)
     args = parser.parse_args(argv)
+
+    bazel_binaries = args.bazel_binaries.split(",")
+    if bazel_binaries:
+      for bazel_binary in bazel_binaries:
+        destination = bazel_bin_dir + "/" + bazel_commit
+        if os.path.exists(destination):
+            continue
+        try:
+            bazelci.download_bazel_binary_at_commit(
+                destination, binary_platform, bazel_commit)
+        except bazelci.BuildkiteException:
+            # Carry on.
+            bazelci.eprint("Binary for Bazel commit %s not found." % bazel_commit)
+
+
 
     bazel_commits = args.bazel_commits.split(",")
     # We use one binary for all Linux platforms.
