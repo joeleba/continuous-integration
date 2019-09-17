@@ -42,7 +42,7 @@ def main(argv=None):
     #if not os.path.exists(bazel_bin_dir):
     #  os.makedirs(bazel_bin_dir)
     
-    subprocess.call(["mkdir", "bazelbins"])
+    subprocess.call(["mkdir", "-p", "~/bazelbins"])
 
     args =  [
           "gsutil",
@@ -50,14 +50,14 @@ def main(argv=None):
           "cp",
           "-r",
           "gs://perf.bazel.build/bazelbins/*",
-          "bazelbins/"
+          "~/bazelbins/"
     ]
     print(args)
     subprocess.call(args)
-    subprocess.call(["ls", "-l", "bazelbins/"])
+    subprocess.call(["ls", "-l", "~/bazelbins/"])
     subprocess.call(["ls", "-l"])
     subprocess.call(["pwd"])
-    subprocess.call(["chmod", "-R", "+x", "bazelbins"])
+    subprocess.call(["chmod", "-R", "+x", "~/bazelbins"])
 
 if __name__ == "__main__":
     sys.exit(main())

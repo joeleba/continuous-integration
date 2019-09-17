@@ -309,7 +309,7 @@ def main(args=None):
         else datetime.date.today()
     )
     bazel_binaries = parsed_args.bazel_binaries.split(",")
-    bazel_binaries_paths = ["bazelbins/{}".format(bazel_binary) for bazel_binary in bazel_binaries]
+    bazel_binaries_paths = ["~/{}".format(bazel_binary) for bazel_binary in bazel_binaries]
 
     bazel_clone_path = bazelci.clone_git_repository(
         BAZEL_REPOSITORY, STARTER_JOB_PLATFORM)
