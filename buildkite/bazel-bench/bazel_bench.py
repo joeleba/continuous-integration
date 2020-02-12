@@ -51,7 +51,7 @@ PROJECTS = [
         "git_repository": "https://github.com/bazelbuild/bazel.git",
         "bazel_command": "build //src:bazel",
         "bazel_bench_extra_options": {},
-        "active": False,
+        "active": True,
     },
     {
         "bazelci_name": "TensorFlow",
