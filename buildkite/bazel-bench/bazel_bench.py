@@ -426,7 +426,7 @@ def main(args=None):
         BAZEL_REPOSITORY, STARTER_JOB_PLATFORM)
     # bazel_commits_full_list, bazel_commits_to_benchmark = _get_bazel_commits(
     #     date, bazel_clone_path, parsed_args.max_commits)
-    bazel_commits_full_list = bazel_commits_to_benchmark = ["bb1258238f6559bafebc767c94a68348a82a9e81", "bd38a741d51aa4d1452cdd1a918119e91d06377a"]
+    bazel_commits_full_list = bazel_commits_to_benchmark = ["bb1258238f6559bafebc767c94a68348a82a9e81", "d53adf28daddfa84b47b2c3a324f865e3d6e39bc"]
     bazel_bench_ci_steps = []
 
     for project in PROJECTS:
