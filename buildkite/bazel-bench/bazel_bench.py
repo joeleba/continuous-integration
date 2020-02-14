@@ -141,8 +141,30 @@ def _get_bazel_commits(date, bazel_repo_path, max_commits=None):
     ]
     command_output = subprocess.check_output(args, cwd=bazel_repo_path)
     decoded = command_output.decode("utf-8").splitlines()
-    full_list = [line.strip("'") for line in decoded if line]
 
+    return [line.strip("'") for line in decoded if line]
+
+
+def _get_bazel_commits(date, bazel_repo_path, max_commits=None):
+    """Get the Bazel commits to benchmark from a particular date.
+
+    Args:
+      date: a datetime.date the date to get commits.
+      bazel_repo_path: the path to a local clone of bazelbuild/bazel.
+      max_commits: the maximum number of commits to consider for benchmarking.
+
+    Return:
+      A tuple: (list of strings: all commits during that day,
+        list of strings: commits to benchmark).
+    """
+    previous_day = date - datetime.timedelta(days=1)
+    
+    from_date = _get_commits_from_date(date, bazel_repo_path)
+    last_from_previous_day = _get_commits_from_date(previous_day, bazel_repo_path)[:-1]
+
+    full_list = [last_from_previous_day] + from_date
+    to_benchmark = [last_from_previous_day] + _evenly_spaced_sample(from_date, max_commits)
+    
     return full_list, _evenly_spaced_sample(full_list, max_commits)
 
 
