@@ -58,9 +58,10 @@ PROJECTS = [
         "storage_subdir": "tensorflow-cc",
         "project_label": "tensorflow-cc",
         "git_repository": "https://github.com/tensorflow/tensorflow.git",
-        "bazel_command": "build --output_filter=^\$ //tensorflow/core:core",
+        "bazel_command": "build --output_filter=^\$ --config=opt //tensorflow/tools/pip_package:build_pip_package",
         "bazel_bench_extra_options": {
             "ubuntu1804": "--env_configure=\"unset PYTHONPATH && yes '' | python3 ./configure.py\"",
+            "rbe_ubuntu1604": "--env_configure=\"yes '' | python3 ./configure.py\"",
             "macos": ("--env_configure=\"python3 --version && unset PYTHONPATH "
                 "&& pip3 install -U --user pip six numpy wheel setuptools mock 'future>=0.17.1' "
                 "&& pip3 install -U --user keras_applications==1.0.6 --no-deps "
@@ -70,11 +71,11 @@ PROJECTS = [
         "active": True,
     }
 ]
-BAZEL_REPOSITORY = "https://github.com/bazelbuild/bazel.git"
+BAZEL_REPOSITORY = "https://github.com/joeleba/bazel.git"
 DATA_DIRECTORY = os.path.join(TMP, ".bazel-bench", "out")
 BAZEL_BENCH_RESULT_FILENAME = "perf_data.csv"
 AGGR_JSON_PROFILES_FILENAME = "aggr_json_profiles.csv"
-PLATFORMS_WHITELIST = ['macos', 'ubuntu1804']
+PLATFORMS_WHITELIST = ['rbe_ubuntu1604'] #['macos', 'ubuntu1804']
 REPORT_GENERATION_PLATFORM = 'ubuntu1804'
 STARTER_JOB_PLATFORM = 'ubuntu1804'
 
@@ -423,15 +424,17 @@ def main(args=None):
 
     bazel_clone_path = bazelci.clone_git_repository(
         BAZEL_REPOSITORY, STARTER_JOB_PLATFORM)
-    bazel_commits_full_list, bazel_commits_to_benchmark = _get_bazel_commits(
-        date, bazel_clone_path, parsed_args.max_commits)
+    # bazel_commits_full_list, bazel_commits_to_benchmark = _get_bazel_commits(
+    #     date, bazel_clone_path, parsed_args.max_commits)
+    bazel_commits_full_list = bazel_commits_to_benchmark = ["bb1258238f6559bafebc767c94a68348a82a9e81", "bd38a741d51aa4d1452cdd1a918119e91d06377a"]
     bazel_bench_ci_steps = []
 
     for project in PROJECTS:
         if not project["active"]:
             continue
-        platforms = _get_platforms(
-            project["bazelci_name"], whitelist=PLATFORMS_WHITELIST)
+        # platforms = _get_platforms(
+        #     project["bazelci_name"], whitelist=PLATFORMS_WHITELIST)
+        platforms = ['rbe_ubuntu1604']
         
         for platform in platforms:
             if (project["bazel_bench_extra_options"] and platform in project["bazel_bench_extra_options"]):
