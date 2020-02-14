@@ -116,19 +116,10 @@ def _evenly_spaced_sample(lst, num_elem):
     return sample[::-1]
 
 
-def _get_bazel_commits(date, bazel_repo_path, max_commits=None):
+def _get_commits_from_date(date, repo_path):
     """Get the commits from a particular date.
 
     Get the commits from 00:00 of date to 00:00 of date + 1.
-
-    Args:
-      date: a datetime.date the date to get commits.
-      bazel_repo_path: the path to a local clone of bazelbuild/bazel.
-      max_commits: the maximum number of commits to consider for benchmarking.
-
-    Return:
-      A tuple: (list of strings: all commits during that day,
-        list of strings: commits to benchmark).
     """
     date_plus_one = date + datetime.timedelta(days=1)
     args = [
@@ -165,7 +156,7 @@ def _get_bazel_commits(date, bazel_repo_path, max_commits=None):
     full_list = [last_from_previous_day] + from_date
     to_benchmark = [last_from_previous_day] + _evenly_spaced_sample(from_date, max_commits)
     
-    return full_list, _evenly_spaced_sample(full_list, max_commits)
+    return full_list, to_benchmark
 
 
 def _get_platforms(project_name, whitelist):
@@ -287,7 +278,7 @@ def _ci_step_for_platform_and_commits(
         + _bazel_bench_env_setup_command(platform, ",".join(bazel_commits))
         + [bazel_bench_command, upload_output_files_storage_command, upload_to_big_query_command]
     )
-    label = bazelci.PLATFORMS[platform]["emoji-name"] + project["project_label"]
+    label = "{} {}".format(bazelci.PLATFORMS[platform]["emoji-name"], project["project_label"])
     return bazelci.create_step(label, commands, platform)
 
 
