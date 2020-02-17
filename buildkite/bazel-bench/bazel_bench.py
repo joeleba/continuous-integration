@@ -151,7 +151,7 @@ def _get_bazel_commits(date, bazel_repo_path, max_commits=None):
     previous_day = date - datetime.timedelta(days=1)
     
     from_date = _get_commits_from_date(date, bazel_repo_path)
-    last_from_previous_day = _get_commits_from_date(previous_day, bazel_repo_path)[:-1]
+    last_from_previous_day = _get_commits_from_date(previous_day, bazel_repo_path)[-1]
 
     full_list = [last_from_previous_day] + from_date
     to_benchmark = [last_from_previous_day] + _evenly_spaced_sample(from_date, max_commits)
