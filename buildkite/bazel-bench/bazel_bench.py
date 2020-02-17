@@ -130,7 +130,7 @@ def _get_commits_from_date(date, repo_path):
         "--until='%s'" % date_plus_one.strftime("%Y-%m-%d 00:00"),
         "--reverse",
     ]
-    command_output = subprocess.check_output(args, cwd=bazel_repo_path)
+    command_output = subprocess.check_output(args, cwd=repo_path)
     decoded = command_output.decode("utf-8").splitlines()
 
     return [line.strip("'") for line in decoded if line]
