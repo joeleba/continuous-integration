@@ -139,6 +139,8 @@ def _get_commits_from_date(date, repo_path):
 def _get_bazel_commits(date, bazel_repo_path, max_commits=None):
     """Get the Bazel commits to benchmark from a particular date.
 
+    Also include the last commit from the previous day (to create some overlap).
+
     Args:
       date: a datetime.date the date to get commits.
       bazel_repo_path: the path to a local clone of bazelbuild/bazel.
@@ -151,10 +153,10 @@ def _get_bazel_commits(date, bazel_repo_path, max_commits=None):
     previous_day = date - datetime.timedelta(days=1)
     
     from_date = _get_commits_from_date(date, bazel_repo_path)
-    last_from_previous_day = _get_commits_from_date(previous_day, bazel_repo_path)[-1]
+    from_prev_day = _get_commits_from_date(previous_day, bazel_repo_path)
 
-    full_list = [last_from_previous_day] + from_date
-    to_benchmark = [last_from_previous_day] + _evenly_spaced_sample(from_date, max_commits)
+    full_list = from_prev_day[-1:] + from_date
+    to_benchmark = from_prev_day[-1:] + _evenly_spaced_sample(from_date, max_commits)
     
     return full_list, to_benchmark
 
