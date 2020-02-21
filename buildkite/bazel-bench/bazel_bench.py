@@ -368,11 +368,22 @@ def _report_generation_step(
     Also update the path reserved for the latest report of each project.
     """
     commands = []
+    commands.append("python3 -m pip install report/requirements.txt")
+    # commands.append(" ".join([
+    #     "bazel",
+    #     "run",
+    #     "report:generate_report",
+    #     "--",
+    #     "--date={}".format(date),
+    #     "--project={}".format(project_label),
+    #     "--storage_bucket={}".format(bucket),
+    #     "--bigquery_table={}".format(bigquery_table),
+    #     "--report_name={}".format(report_name),
+    #     "--upload_report={}".format(upload_report)
+    # ]))
     commands.append(" ".join([
-        "bazel",
-        "run",
-        "report:generate_report",
-        "--",
+        "python3",
+        "report/generate_report.py",
         "--date={}".format(date),
         "--project={}".format(project_label),
         "--storage_bucket={}".format(bucket),
