@@ -368,7 +368,7 @@ def _report_generation_step(
     Also update the path reserved for the latest report of each project.
     """
     commands = []
-    commands.append("python3 -m pip install report/requirements.txt")
+    commands.append("python3 -m pip install third_party/requirements.txt")
     # commands.append(" ".join([
     #     "bazel",
     #     "run",
