@@ -224,7 +224,7 @@ def _ci_step_for_platform_and_commits(
     project_clone_path = _get_clone_path(project["git_repository"], platform)
     bazel_clone_path = _get_clone_path(BAZEL_REPOSITORY, platform)
 
-    pip_command = "python3 -m pip install third_party/requirements.txt"
+    pip_command = "python3 -m pip install -r third_party/requirements.txt"
     bazel_bench_command = " ".join(
         [
             "bazel",
