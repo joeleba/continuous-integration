@@ -224,6 +224,7 @@ def _ci_step_for_platform_and_commits(
     project_clone_path = _get_clone_path(project["git_repository"], platform)
     bazel_clone_path = _get_clone_path(BAZEL_REPOSITORY, platform)
 
+    pip_command = "python3 -m pip install third_party/requirements.txt"
     bazel_bench_command = " ".join(
         [
             "bazel",
@@ -278,7 +279,7 @@ def _ci_step_for_platform_and_commits(
     commands = (
         [bazelci.fetch_bazelcipy_command()]
         + _bazel_bench_env_setup_command(platform, ",".join(bazel_commits))
-        + [bazel_bench_command, upload_output_files_storage_command, upload_to_big_query_command]
+        + [pip_command, bazel_bench_command, upload_output_files_storage_command, upload_to_big_query_command]
     )
     label = "{} {}".format(bazelci.PLATFORMS[platform]["emoji-name"], project["project_label"])
     return bazelci.create_step(label, commands, platform)
