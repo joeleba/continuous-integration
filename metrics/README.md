@@ -9,6 +9,7 @@ NOTE: Double check that the following commands match the output of `git grep "CR
 ```sql
 USE metrics;
 
+CREATE TABLE aggregated_pipeline_performance (org VARCHAR(255), pipeline VARCHAR(255), build INT, scheduled DATETIME, total_time_seconds FLOAT, skipped_tasks VARCHAR(255), result VARCHAR(16), PRIMARY KEY(org, pipeline, build));
 CREATE TABLE build_success (org VARCHAR(255), pipeline VARCHAR(255), build INT, linux VARCHAR(255), macos VARCHAR(255), windows VARCHAR(255), rbe VARCHAR(255), PRIMARY KEY(org, pipeline, build));
 CREATE TABLE builds_per_change (org VARCHAR(255), pipeline VARCHAR(255), changelist INT, builds INT, PRIMARY KEY(org, pipeline, changelist));
 CREATE TABLE cloud_build_status (timestamp DATETIME, build VARCHAR(255), source VARCHAR(255), success BOOL, PRIMARY KEY(timestamp, build));
@@ -55,6 +56,12 @@ The following steps allow you to run the service locally:
 4. Download the [Cloud SQL-Proxy](https://cloud.google.com/sql/docs/mysql/sql-proxy).
 5. Start the proxy via `./cloud_sql_proxy -instances="bazel-untrusted:europe-west1:metrics"=tcp:3306`
 6. Run the app via `go run metrics/main.go metrics/settings.go --test=true`. The `test`parameter means that all metrics are collected immediately, and all results are published to stdout instead of being written to Cloud SQL.
+
+## Access via Cloud Shell
+Open Cloud Shell for the `bazel-untrusted` project, then run these commands:
+
+- `gcloud beta auth login`
+- `gcloud beta sql connect metrics --user=root --quiet`
 
 ## Test Coverage
 

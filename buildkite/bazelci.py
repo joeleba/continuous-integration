@@ -25,6 +25,7 @@ import os
 import os.path
 import random
 import re
+import requests
 from shutil import copyfile
 import shutil
 import stat
@@ -128,6 +129,7 @@ DOWNSTREAM_PROJECTS_PRODUCTION = {
         "git_repository": "https://github.com/bazelbuild/bazel-skylib.git",
         "http_config": "https://raw.githubusercontent.com/bazelbuild/bazel-skylib/master/.bazelci/presubmit.yml",
         "pipeline_slug": "bazel-skylib",
+        "owned_by_bazel": True,
     },
     "Bazel toolchains": {
         "git_repository": "https://github.com/bazelbuild/bazel-toolchains.git",
@@ -213,16 +215,19 @@ DOWNSTREAM_PROJECTS_PRODUCTION = {
         "git_repository": "https://github.com/google/protobuf.git",
         "http_config": "https://raw.githubusercontent.com/bazelbuild/continuous-integration/master/buildkite/pipelines/protobuf-postsubmit.yml",
         "pipeline_slug": "protobuf",
+        "owned_by_bazel": True,
     },
     "Skydoc": {
         "git_repository": "https://github.com/bazelbuild/skydoc.git",
         "http_config": "https://raw.githubusercontent.com/bazelbuild/skydoc/master/.bazelci/presubmit.yml",
         "pipeline_slug": "skydoc",
+        "owned_by_bazel": True,
     },
     "Subpar": {
         "git_repository": "https://github.com/google/subpar.git",
         "http_config": "https://raw.githubusercontent.com/bazelbuild/continuous-integration/master/buildkite/pipelines/subpar-postsubmit.yml",
         "pipeline_slug": "subpar",
+        "owned_by_bazel": True,
     },
     "TensorFlow": {
         "git_repository": "https://github.com/tensorflow/tensorflow.git",
@@ -258,11 +263,13 @@ DOWNSTREAM_PROJECTS_PRODUCTION = {
         "git_repository": "https://github.com/bazelbuild/rules_cc.git",
         "http_config": "https://raw.githubusercontent.com/bazelbuild/rules_cc/master/.bazelci/presubmit.yml",
         "pipeline_slug": "rules-cc",
+        "owned_by_bazel": True,
     },
     "rules_closure": {
         "git_repository": "https://github.com/bazelbuild/rules_closure.git",
         "http_config": "https://raw.githubusercontent.com/bazelbuild/rules_closure/master/.bazelci/presubmit.yml",
         "pipeline_slug": "rules-closure-closure-compiler",
+        "owned_by_bazel": True,
     },
     "rules_d": {
         "git_repository": "https://github.com/bazelbuild/rules_d.git",
@@ -278,6 +285,7 @@ DOWNSTREAM_PROJECTS_PRODUCTION = {
         "git_repository": "https://github.com/bazelbuild/rules_foreign_cc.git",
         "http_config": "https://raw.githubusercontent.com/bazelbuild/rules_foreign_cc/master/.bazelci/config.yaml",
         "pipeline_slug": "rules-foreign-cc",
+        "owned_by_bazel": True,
     },
     "rules_go": {
         "git_repository": "https://github.com/bazelbuild/rules_go.git",
@@ -308,11 +316,13 @@ DOWNSTREAM_PROJECTS_PRODUCTION = {
         "git_repository": "https://github.com/bazelbuild/rules_jvm_external.git",
         "http_config": "https://raw.githubusercontent.com/bazelbuild/rules_jvm_external/master/.bazelci/presubmit.yml",
         "pipeline_slug": "rules-jvm-external",
+        "owned_by_bazel": True,
     },
     "rules_jvm_external - examples": {
         "git_repository": "https://github.com/bazelbuild/rules_jvm_external.git",
         "http_config": "https://raw.githubusercontent.com/bazelbuild/rules_jvm_external/master/.bazelci/examples.yml",
         "pipeline_slug": "rules-jvm-external-examples",
+        "owned_by_bazel": True,
     },
     "rules_k8s": {
         "git_repository": "https://github.com/bazelbuild/rules_k8s.git",
@@ -338,11 +348,13 @@ DOWNSTREAM_PROJECTS_PRODUCTION = {
         "git_repository": "https://github.com/bazelbuild/rules_proto.git",
         "http_config": "https://raw.githubusercontent.com/bazelbuild/rules_proto/master/.bazelci/presubmit.yml",
         "pipeline_slug": "rules-proto",
+        "owned_by_bazel": True,
     },
     "rules_python": {
         "git_repository": "https://github.com/bazelbuild/rules_python.git",
         "http_config": "https://raw.githubusercontent.com/bazelbuild/rules_python/master/.bazelci/presubmit.yml",
         "pipeline_slug": "rules-python-python",
+        "owned_by_bazel": True,
     },
     "rules_rust": {
         "git_repository": "https://github.com/bazelbuild/rules_rust.git",
@@ -421,7 +433,7 @@ PLATFORMS = {
         "emoji-name": ":centos: 7 (Java 8)",
         "downstream-root": "/var/lib/buildkite-agent/builds/${BUILDKITE_AGENT_NAME}/${BUILDKITE_ORGANIZATION_SLUG}-downstream-projects",
         "publish_binary": ["ubuntu1404", "centos7", "linux"],
-        "docker-image": f"gcr.io/{DOCKER_REGISTRY_PREFIX}/centos7:java8",
+        "docker-image": f"gcr.io/{DOCKER_REGISTRY_PREFIX}/centos7-java8",
         "python": "python3.6",
     },
     "debian10": {
@@ -429,7 +441,7 @@ PLATFORMS = {
         "emoji-name": ":debian: Buster (OpenJDK 11)",
         "downstream-root": "/var/lib/buildkite-agent/builds/${BUILDKITE_AGENT_NAME}/${BUILDKITE_ORGANIZATION_SLUG}-downstream-projects",
         "publish_binary": [],
-        "docker-image": f"gcr.io/{DOCKER_REGISTRY_PREFIX}/debian10:java11",
+        "docker-image": f"gcr.io/{DOCKER_REGISTRY_PREFIX}/debian10-java11",
         "python": "python3.7",
     },
     "ubuntu1604": {
@@ -437,7 +449,7 @@ PLATFORMS = {
         "emoji-name": ":ubuntu: 16.04 (OpenJDK 8)",
         "downstream-root": "/var/lib/buildkite-agent/builds/${BUILDKITE_AGENT_NAME}/${BUILDKITE_ORGANIZATION_SLUG}-downstream-projects",
         "publish_binary": ["ubuntu1604"],
-        "docker-image": f"gcr.io/{DOCKER_REGISTRY_PREFIX}/ubuntu1604:java8",
+        "docker-image": f"gcr.io/{DOCKER_REGISTRY_PREFIX}/ubuntu1604-java8",
         "python": "python3.6",
     },
     "ubuntu1804": {
@@ -445,7 +457,7 @@ PLATFORMS = {
         "emoji-name": ":ubuntu: 18.04 (OpenJDK 11)",
         "downstream-root": "/var/lib/buildkite-agent/builds/${BUILDKITE_AGENT_NAME}/${BUILDKITE_ORGANIZATION_SLUG}-downstream-projects",
         "publish_binary": ["ubuntu1804"],
-        "docker-image": f"gcr.io/{DOCKER_REGISTRY_PREFIX}/ubuntu1804:java11",
+        "docker-image": f"gcr.io/{DOCKER_REGISTRY_PREFIX}/ubuntu1804-java11",
         "python": "python3.6",
     },
     "ubuntu1804_nojava": {
@@ -453,7 +465,7 @@ PLATFORMS = {
         "emoji-name": ":ubuntu: 18.04 (no JDK)",
         "downstream-root": "/var/lib/buildkite-agent/builds/${BUILDKITE_AGENT_NAME}/${BUILDKITE_ORGANIZATION_SLUG}-downstream-projects",
         "publish_binary": [],
-        "docker-image": f"gcr.io/{DOCKER_REGISTRY_PREFIX}/ubuntu1804:nojava",
+        "docker-image": f"gcr.io/{DOCKER_REGISTRY_PREFIX}/ubuntu1804-nojava",
         "python": "python3.6",
     },
     "macos": {
@@ -477,7 +489,7 @@ PLATFORMS = {
         "emoji-name": "RBE (:ubuntu: 16.04, OpenJDK 8)",
         "downstream-root": "/var/lib/buildkite-agent/builds/${BUILDKITE_AGENT_NAME}/${BUILDKITE_ORGANIZATION_SLUG}-downstream-projects",
         "publish_binary": [],
-        "docker-image": f"gcr.io/{DOCKER_REGISTRY_PREFIX}/ubuntu1604:java8",
+        "docker-image": f"gcr.io/{DOCKER_REGISTRY_PREFIX}/ubuntu1604-java8",
         "python": "python3.6",
     },
 }
@@ -554,10 +566,19 @@ P9w8kNhEbw==
         "https://api.buildkite.com/v2/organizations/{}/pipelines/{}/builds/{}"
     )
 
+    _NEW_BUILD_URL_TEMPLATE = (
+        "https://api.buildkite.com/v2/organizations/{}/pipelines/{}/builds"
+    )
+
+    _RETRY_JOB_URL_TEMPLATE = (
+        "https://api.buildkite.com/v2/organizations/{}/pipelines/{}/builds/{}/jobs/{}/retry"
+    )
+
     def __init__(self, org, pipeline):
         self._org = org
         self._pipeline = pipeline
         self._token = self._get_buildkite_token()
+
 
     def _get_buildkite_token(self):
         return decrypt_token(
@@ -569,23 +590,172 @@ P9w8kNhEbw==
             else "buildkite-untrusted-api-token",
         )
 
-    def _open_url(self, url):
+
+    def _open_url(self, url, params = []):
         try:
+            params_str = "".join("&{}={}".format(k, v) for k, v in params)
             return (
-                urllib.request.urlopen("{}?access_token={}".format(url, self._token))
+                urllib.request.urlopen("{}?access_token={}{}".format(url, self._token, params_str))
                 .read()
-                .decode("utf-8")
+                .decode("utf-8", "ignore")
             )
         except urllib.error.HTTPError as ex:
             raise BuildkiteException("Failed to open {}: {} - {}".format(url, ex.code, ex.reason))
 
+
     def get_build_info(self, build_number):
+        """Get build info for a pipeline with a given build number
+        See https://buildkite.com/docs/apis/rest-api/builds#get-a-build
+
+        Parameters
+        ----------
+        build_number : the build number
+
+        Returns
+        -------
+        dict
+            the metadata for the build
+        """
         url = self._BUILD_STATUS_URL_TEMPLATE.format(self._org, self._pipeline, build_number)
         output = self._open_url(url)
         return json.loads(output)
 
+
+    def get_build_info_list(self, params):
+        """Get a list of build infos for this pipeline
+        See https://buildkite.com/docs/apis/rest-api/builds#list-builds-for-a-pipeline
+
+        Parameters
+        ----------
+        params : the parameters to filter the result
+
+        Returns
+        -------
+        list of dict
+            the metadata for a list of builds
+        """
+        url = self._BUILD_STATUS_URL_TEMPLATE.format(self._org, self._pipeline, "")
+        output = self._open_url(url, params)
+        return json.loads(output)
+
+
     def get_build_log(self, job):
         return self._open_url(job["raw_log_url"])
+
+
+    @staticmethod
+    def _check_response(response, expected_status_code):
+        if response.status_code != expected_status_code:
+            eprint("Exit code:", response.status_code)
+            eprint("Response:\n", response.text)
+            response.raise_for_status()
+
+
+    def trigger_new_build(self, commit, message = None, env = {}):
+        """Trigger a new build at a given commit and return the build metadata.
+        See https://buildkite.com/docs/apis/rest-api/builds#create-a-build
+
+        Parameters
+        ----------
+        commit : the commit we want to build at
+        message : the message we should as the build titile
+        env : (optional) the environment variables to set
+
+        Returns
+        -------
+        dict
+            the metadata for the build
+        """
+        url = self._NEW_BUILD_URL_TEMPLATE.format(self._org, self._pipeline)
+        data = {
+            "commit": commit,
+            "branch": "master",
+            "message": message if message else f"Trigger build at {commit}",
+            "env": env,
+        }
+        response = requests.post(url + "?access_token=" + self._token, json = data)
+        BuildkiteClient._check_response(response, requests.codes.created)
+        return json.loads(response.text)
+
+
+    def trigger_job_retry(self, build_number, job_id):
+        """Trigger a job retry and return the job metadata.
+        See https://buildkite.com/docs/apis/rest-api/jobs#retry-a-job
+
+        Parameters
+        ----------
+        build_number : the number of the build we want to retry
+        job_id : the id of the job we want to retry
+
+        Returns
+        -------
+        dict
+            the metadata for the job
+        """
+        url = self._RETRY_JOB_URL_TEMPLATE.format(self._org, self._pipeline, build_number, job_id)
+        response = requests.put(url + "?access_token=" + self._token)
+        BuildkiteClient._check_response(response, requests.codes.ok)
+        return json.loads(response.text)
+
+
+    def wait_job_to_finish(self, build_number, job_id, interval_time=30, logger=None):
+        """Wait a job to finish and return the job metadata
+
+        Parameters
+        ----------
+        build_number : the number of the build we want to wait
+        job_id : the id of the job we want to wait
+        interval_time : (optional) the interval time to check the build status, default to 30s
+        logger : (optional) a logger to report progress
+
+        Returns
+        -------
+        dict
+            the latest metadata for the job
+        """
+        t = 0
+        build_info = self.get_build_info(build_number)
+        while True:
+            for job in build_info["jobs"]:
+                if job["id"] == job_id:
+                    state = job["state"]
+                    if state != "scheduled" and state != "running" and state != "assigned":
+                        return job
+                    break
+            else:
+                raise BuildkiteException(f"job id {job_id} doesn't exist in build " + build_info["web_url"])
+            url = build_info["web_url"]
+            if logger:
+                logger.log(f"Waiting for {url}, waited {t} seconds...")
+            time.sleep(interval_time)
+            t += interval_time
+            build_info = self.get_build_info(build_number)
+
+
+    def wait_build_to_finish(self, build_number, interval_time=30, logger=None):
+        """Wait a build to finish and return the build metadata
+
+        Parameters
+        ----------
+        build_number : the number of the build we want to wait
+        interval_time : (optional) the interval time to check the build status, default to 30s
+        logger : (optional) a logger to report progress
+
+        Returns
+        -------
+        dict
+            the latest metadata for the build
+        """
+        t = 0
+        build_info = self.get_build_info(build_number)
+        while build_info["state"] == "scheduled" or build_info["state"] == "running":
+            url = build_info["web_url"]
+            if logger:
+                logger.log(f"Waiting for {url}, waited {t} seconds...")
+            time.sleep(interval_time)
+            t += interval_time
+            build_info = self.get_build_info(build_number)
+        return build_info
 
 
 def decrypt_token(encrypted_token, kms_key):
@@ -1225,7 +1395,7 @@ def remote_caching_flags(platform):
             subprocess.check_output(["/usr/bin/xcodebuild", "-version"]),
         ]
         # Use a local cache server for our macOS machines.
-        flags = ["--remote_cache=http://100.107.73.186"]
+        flags = ["--remote_cache=http://100.107.73.148"]
     else:
         platform_cache_key += [
             # Platform name:
@@ -1298,10 +1468,8 @@ def common_build_flags(bep_file, platform):
         "--terminal_columns=143",
         "--show_timestamps",
         "--verbose_failures",
-        "--keep_going",
         "--jobs=" + concurrent_jobs(platform),
         "--announce_rc",
-        "--experimental_multi_threaded_digest",
         "--experimental_repository_cache_hardlinks",
         # Some projects set --disk_cache in their project-specific bazelrc, which we never want on
         # CI, so let's just disable it explicitly.
@@ -1332,10 +1500,9 @@ def rbe_flags(original_flags, accept_cached):
     flags = [
         "--remote_executor=remotebuildexecution.googleapis.com",
         "--remote_instance_name=projects/bazel-untrusted/instances/default_instance",
-        "--remote_timeout=3600",
-        "--experimental_strict_action_env",
-        "--tls_enabled=true",
+        "--incompatible_strict_action_env",
         "--google_default_credentials",
+        "--toolchain_resolution_debug",
     ]
 
     # Enable BES / Build Results reporting.
@@ -1711,8 +1878,9 @@ def execute_command_and_get_output(args, shell=False, fail_if_nonzero=True, prin
     return process.stdout
 
 
-def execute_command(args, shell=False, fail_if_nonzero=True, cwd=None):
-    eprint(" ".join(args))
+def execute_command(args, shell=False, fail_if_nonzero=True, cwd=None, print_output=True):
+    if print_output:
+        eprint(" ".join(args))
     return subprocess.run(
         args, shell=shell, check=fail_if_nonzero, env=os.environ, cwd=cwd
     ).returncode
@@ -1773,7 +1941,7 @@ def create_docker_step(label, image, commands=None, additional_env_vars=None):
         "command": commands,
         "agents": {"queue": "default"},
         "plugins": {
-            "docker#v3.2.0": {
+            "docker#v3.5.0": {
                 "always-pull": True,
                 "environment": env,
                 "image": image,
@@ -2596,7 +2764,10 @@ def update_last_green_commit_if_newer(last_green_commit_url):
     # commits, otherwise the output should be empty.
     if not last_green_commit or result:
         execute_command(
-            ["echo %s | %s cp - %s" % (current_commit, gsutil_command(), last_green_commit_url)],
+            [
+                "echo %s | %s -h 'Cache-Control: no-store' cp - %s"
+                % (current_commit, gsutil_command(), last_green_commit_url)
+            ],
             shell=True,
         )
     else:

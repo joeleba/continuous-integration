@@ -35,9 +35,6 @@ mkdir -p "${AGENT_HOME}/.cache/bazel/_bazel_buildkite-agent"
 chown -R buildkite-agent:buildkite-agent "${AGENT_HOME}"
 chmod 0755 "${AGENT_HOME}"
 
-### Let 'localhost' resolve to '::1', otherwise one of Envoy's tests fails.
-sed -i 's/^::1 .*/::1 localhost ip6-localhost ip6-loopback/' /etc/hosts
-
 ### Get configuration parameters.
 case $(hostname -f) in
   *.bazel-public.*)
@@ -67,20 +64,6 @@ systemctl start docker
 gcloud auth configure-docker --quiet
 sudo -H -u buildkite-agent gcloud auth configure-docker --quiet
 
-### Write the Buildkite agent's systemd configuration.
-mkdir -p /etc/systemd/system/buildkite-agent.service.d
-cat > /etc/systemd/system/buildkite-agent.service.d/override.conf <<'EOF'
-[Service]
-Restart=no
-ExecStopPost=/bin/systemctl poweroff
-# This allows us to run ExecStartPre and ExecStartPost steps with root permissions.
-PermissionsStartOnly=true
-# Disable tasks accounting, because Bazel is prone to run into resource limits there.
-# This fixes the "cgroup: fork rejected by pids controller" error that some CI jobs triggered.
-TasksAccounting=no
-EOF
-systemctl daemon-reload
-
 ### Write the Buildkite agent configuration.
 cat > /etc/buildkite-agent/buildkite-agent.cfg <<EOF
 token="${BUILDKITE_TOKEN}"
@@ -99,14 +82,8 @@ EOF
 ### Add the Buildkite agent hooks.
 cat > /etc/buildkite-agent/hooks/environment <<EOF
 #!/bin/bash
-
 set -euo pipefail
-
-export ANDROID_HOME=/opt/android-sdk-linux
-export ANDROID_NDK_HOME=/opt/android-ndk-r15c
-export BUILDKITE_ARTIFACT_UPLOAD_DESTINATION="gs://${ARTIFACT_BUCKET}/\$BUILDKITE_JOB_ID"
-export CLOUDSDK_PYTHON="/usr/bin/python"
-export PATH="/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
+export BUILDKITE_ARTIFACT_UPLOAD_DESTINATION="gs://${ARTIFACT_BUCKET}/\${BUILDKITE_JOB_ID}"
 EOF
 
 ### Fix permissions of the Buildkite agent configuration files and hooks.
@@ -124,15 +101,15 @@ case $(hostname -f) in
         ;;
 esac
 
-docker pull "gcr.io/$PREFIX/ubuntu1604/bazel:java8" &
-docker pull "gcr.io/$PREFIX/ubuntu1804/bazel:java11" &
-docker pull "gcr.io/$PREFIX/ubuntu1804/bazel:nojava" &
-docker pull "gcr.io/$PREFIX/ubuntu1604:java8" &
-docker pull "gcr.io/$PREFIX/ubuntu1804:java11" &
-docker pull "gcr.io/$PREFIX/ubuntu1804:nojava" &
-docker pull "gcr.io/$PREFIX/debian10:java11" &
-docker pull "gcr.io/$PREFIX/centos7:java8" &
-docker pull "gcr.io/$PREFIX/centos7:releaser" &
+docker pull "gcr.io/$PREFIX/centos7-java8" &
+docker pull "gcr.io/$PREFIX/centos7-releaser" &
+docker pull "gcr.io/$PREFIX/debian10-java11" &
+docker pull "gcr.io/$PREFIX/ubuntu1604-bazel-java8" &
+docker pull "gcr.io/$PREFIX/ubuntu1604-java8" &
+docker pull "gcr.io/$PREFIX/ubuntu1804-bazel-java11" &
+docker pull "gcr.io/$PREFIX/ubuntu1804-bazel-nojava" &
+docker pull "gcr.io/$PREFIX/ubuntu1804-java11" &
+docker pull "gcr.io/$PREFIX/ubuntu1804-nojava" &
 wait
 
 ### Start the Buildkite agent service.
