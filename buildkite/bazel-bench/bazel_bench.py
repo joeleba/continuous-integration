@@ -444,8 +444,8 @@ def main(args=None):
 
     for project in PROJECTS:
         if (not project["active"]
-            or not parsed_args.projects
-            or project not in parsed_args.projects):
+            or (parsed_args.projects
+                and project['project_label'] not in parsed_args.projects)):
             continue
         platforms = _get_platforms(
             project["bazelci_name"], whitelist=PLATFORMS_WHITELIST)
