@@ -419,6 +419,7 @@ def main(args=None):
     parser = argparse.ArgumentParser(description="Bazel Bench CI Pipeline")
     parser.add_argument("--date", type=str)
     parser.add_argument("--bazel_bench_options", type=str, default="")
+    parser.add_argument("--projects", type=str, nargs='+', default=None)
     parser.add_argument("--bucket", type=str, default="")
     parser.add_argument("--max_commits", type=int, default="")
     parser.add_argument("--report_name", type=str, default="report")
@@ -442,7 +443,9 @@ def main(args=None):
     bazel_bench_ci_steps = []
 
     for project in PROJECTS:
-        if not project["active"]:
+        if (not project["active"]
+            or not parsed_args.projects
+            or project not in parsed_args.projects):
             continue
         platforms = _get_platforms(
             project["bazelci_name"], whitelist=PLATFORMS_WHITELIST)
