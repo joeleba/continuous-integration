@@ -391,7 +391,6 @@ DOWNSTREAM_PROJECTS_PRODUCTION = {
         "git_repository": "https://github.com/protocolbuffers/upb.git",
         "http_config": "https://raw.githubusercontent.com/protocolbuffers/upb/master/.bazelci/presubmit.yml",
         "pipeline_slug": "upb",
-        "disabled_reason": "https://github.com/protocolbuffers/upb/issues/172",
     },
 }
 
@@ -1340,7 +1339,7 @@ def execute_shell_commands(commands):
     if not commands:
         return
     print_collapsed_group(":bash: Setup (Shell Commands)")
-    shell_command = "\n".join(commands)
+    shell_command = "\n".join(["set -e"] + commands)
     execute_command([shell_command], shell=True)
 
 
