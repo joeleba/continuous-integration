@@ -4,16 +4,39 @@ This is the guide to conducting a Bazel release. This is especially relevant for
 release managers, but will be of interest to anyone who is curious about the
 release process.
 
+## Preface 
+
+> For future reference and release managers - the release manager playbook should
+> be treated like an IKEA manual. That means: Do not try to be smart, optimize /
+> skip / reorder steps, otherwise chaos will ensue. Just follow it and the end
+> result will be.. well, a usable piece of furniture, or a Bazel release
+> (depending on the manual).
+> 
+> Like aviation and workplace safety regulations, the playbook is written in the
+> tears and blood of broken Bazelisks, pipelines, releases and Git branches.
+> Assume that every step is exactly there for a reason, even if it might not be
+> obvious. If you follow them to the letter, they are not error prone. Errors
+> have only happened in the past, when a release manager thought it's ok to
+> follow them by spirit instead. ;)
+> 
+> -- @philwo
+
 ## Setup
 
-Do these steps once per release.
+Do this once.
 
+*   Make sure you are a member of the Bazel [release-managers](https://buildkite.com/organizations/bazel-trusted/teams/release-managers/members)
+    group.  If that link does not work for you, ask one of the Buildkite org admins to add you to
+    the group.
 *   Set up github ssh key if you haven't already.
     *    https://help.github.com/articles/generating-a-new-ssh-key-and-adding-it-to-the-ssh-agent/
+        
+Do these steps once per release.
+
 *   Find baseline commit and cherrypicks
     *    Check Bazel nightly build at
          https://buildkite.com/bazel/bazel-with-downstream-projects-bazel. If
-         many downstream jobs are failing then this isnot a good baseline
+         many downstream jobs are failing then this is not a good baseline
          commit. If only a few downstream jobs are failing and the issues are
          known then this is a good baseline commit. Fixes for the known issues
          should be cherry-picked, any remaining issues should become release
@@ -56,6 +79,8 @@ Keep the task list updated and check boxes as you follow the release process. [E
 
 ## Update the status of GitHub issues for incompatible changes
 
+**This section is a place where you have to mechanically follow the entire process to the letter from beginning to end, even though it might seem unnecessary at times.**
+
 In the below, _X.Y_ is a release you are cutting.
 
 ### Start new migration windows
@@ -86,7 +111,7 @@ In the below, _X.Y_ is a release you are cutting.
 
 ## Create a Candidate
 
-Create candidates with the `release.sh` script.
+Create candidates with the `release.sh` script. See above how to pick a good baseline commit.
 
 *  If it's the first candidate for this version, run:
 
@@ -147,17 +172,15 @@ Editing the release notes is not needed (it will be done later).
         `release-$RELEASE_NUMBER` branch in the list. A build should
         automatically run. Make sure that it passes.
 
-1.  When it all looks good, go back to the job in the release pipeline, click
-    "Unblock step" for the deployment step.
+1.  When it all looks good, go back to the job in the
+    [release pipeline](https://buildkite.com/bazel-trusted/bazel-release/builds),
+    click "Deploy release artifacts" for the deployment step.
 
     *   This will upload the release candidate binaries to GitHub and our 
         apt-get repository. The github link is probably of the form:
-        https://releases.bazel.build/0.25.0/rc1/index.html
+        https://releases.bazel.build/3.6.0/rc1/index.html
 
-    *   If you don't have the permission, ask one of the Buildkite org admins
-        to add you to the [release-managers](https://buildkite.com/organizations/bazel-trusted/teams/release-managers/members) group.
-
-1.  If that worked, click "Unblock step" for the "Generate Announcement" step.
+1.  If that worked, click on the "Generate announcement mail text" step to unblock it.
     If it's the first release candidate, prepare the release announcement (see
     next section).
 
@@ -168,13 +191,14 @@ Editing the release notes is not needed (it will be done later).
     *   The second line is the subject.
     *   The rest is the body of the message.
     *   Replace the generated notes with a link to the release announcement draft.
+       `https://docs.google.com/document/d/1wDvulLlj4NAlPZamdlEVFORks3YXJonCjyuQMUQEmB0/view`
 
 1.  Trigger a new pipeline in BuildKite to test the release candidate with all the downstream projects.
     *   Go to https://buildkite.com/bazel/bazel-with-downstream-projects-bazel
     *   Click "New Build", then fill in the fields like this:
-        *   Message: Test Release-0.14.0rc1 (Or any message you like)
+        *   Message: Test Release-3.0.0rc2 (Or any message you like)
         *   Commit: HEAD
-        *   Branch: release-0.14.0
+        *   Branch: release-3.0.0rc2
 
 1.  Look for failing projects in red.
     *   Compare the results with the latest Bazel release:
@@ -218,6 +242,7 @@ Once the first candidate is available:
 1.  Send an email to [bazel-dev](https://groups.google.com/forum/#!forum/bazel-dev) for
     additional reviews.
 1.  Assign a comment to "+[aiuto@google.com](mailto:aiuto@google.com)"
+    and "+[daroberts@google.com](mailto:daroberts@google.com)"
     for a global review.
 
 After a few days of iteration:
@@ -301,18 +326,33 @@ After a few days of iteration:
          1. After the changes are submitted, it will take 30 mins-1 hour for them to show up on bazel.build.
 
 1.  Merge the blog post pull request.
+    1.  Make sure you update the date in your post (and the path) to reflect when
+    it is actually published.
+    1.  **Note:** The blog sometimes takes time to update the homepage, so use
+    the full path to your post to check that it is live.
 1.  Update the [release page](https://github.com/bazelbuild/bazel/releases/) to
     replace the generated notes with a link to the blog post.
 1.  Close the release-tracking bug. If you need to do a patch release, create a
     new tracking bug.
+
+### Updating Google's internal mirror
+
+Please ping @philwo and @meteorcloudy to copy the release binary to their
+internal mirror.
+
 
 ### Updating the Homebrew recipe
 
 [Homebrew](http://brew.sh/index.html) is a package manager for OS X. This
 section assumes that you are on a Mac OS machine with homebrew installed.
 
-To update the `bazel` recipe on Homebrew, you must send a pull request to
-https://github.com/bazelbuild/homebrew-tap
+To update the `bazel` recipe on Homebrew, you can send a pull request to
+https://github.com/Homebrew/homebrew-core/blob/master/Formula/bazel.rb.
+
+Example: https://github.com/Homebrew/homebrew-core/pull/57966
+
+However, usually the Homebrew community takes care of this reasonably
+quickly, so feel free to skip this step, if you aren't familiar with it.
 
 
 ### Updating the Chocolatey package

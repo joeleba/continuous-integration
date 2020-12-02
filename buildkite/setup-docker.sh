@@ -63,6 +63,9 @@ EOF
   add-apt-repository -y "deb https://apt.buildkite.com/buildkite-agent stable main"
   apt-get -y update
   apt-get -y install buildkite-agent
+  # Workaround bug https://github.com/bazelbuild/continuous-integration/issues/1034
+  curl -fsSL --retry 3 https://github.com/buildkite/agent/releases/download/v3.22.1/buildkite-agent-linux-amd64-3.22.1.tar.gz | \
+      tar xvz -C /usr/bin ./buildkite-agent
 
   # Disable the Buildkite agent service, as the startup script has to mount /var/lib/buildkite-agent
   # first.
@@ -172,11 +175,20 @@ EOF
 
 ### Install Swift toolchains.
 {
+  # Swift 4.2.1
   curl -fsSL https://mirror.bazel.build/swift.org/builds/swift-4.2.1-release/ubuntu1404/swift-4.2.1-RELEASE/swift-4.2.1-RELEASE-ubuntu14.04.tar.gz | \
       tar xz -C /opt
   curl -fsSL https://mirror.bazel.build/swift.org/builds/swift-4.2.1-release/ubuntu1604/swift-4.2.1-RELEASE/swift-4.2.1-RELEASE-ubuntu16.04.tar.gz | \
       tar xz -C /opt
   curl -fsSL https://mirror.bazel.build/swift.org/builds/swift-4.2.1-release/ubuntu1804/swift-4.2.1-RELEASE/swift-4.2.1-RELEASE-ubuntu18.04.tar.gz | \
+      tar xz -C /opt
+
+  # Swift 5.2.5
+  curl -fsSL https://mirror.bazel.build/swift.org/builds/swift-5.2.5-release/ubuntu1604/swift-5.2.5-RELEASE/swift-5.2.5-RELEASE-ubuntu16.04.tar.gz | \
+      tar xz -C /opt
+  curl -fsSL https://mirror.bazel.build/swift.org/builds/swift-5.2.5-release/ubuntu1804/swift-5.2.5-RELEASE/swift-5.2.5-RELEASE-ubuntu18.04.tar.gz | \
+      tar xz -C /opt
+  curl -fsSL https://mirror.bazel.build/swift.org/builds/swift-5.2.5-release/ubuntu2004/swift-5.2.5-RELEASE/swift-5.2.5-RELEASE-ubuntu20.04.tar.gz | \
       tar xz -C /opt
 }
 
@@ -185,6 +197,10 @@ EOF
   mkdir /opt/go1.13.8.linux-amd64
   curl -fsSL https://dl.google.com/go/go1.13.8.linux-amd64.tar.gz | \
       tar xz -C /opt/go1.13.8.linux-amd64 --strip=1
+
+  mkdir /opt/go1.15.2.linux-amd64
+  curl -fsSL https://dl.google.com/go/go1.15.2.linux-amd64.tar.gz | \
+      tar xz -C /opt/go1.15.2.linux-amd64 --strip=1
 }
 
 ### Install Android NDK.
@@ -206,15 +222,16 @@ EOF
   tools/bin/sdkmanager --update
   tools/bin/sdkmanager \
       "build-tools;28.0.2" \
-      "build-tools;28.0.3" \
-      "build-tools;29.0.0" \
       "build-tools;29.0.2" \
       "build-tools;29.0.3" \
+      "build-tools;30.0.1" \
       "emulator" \
       "extras;android;m2repository" \
       "platform-tools" \
       "platforms;android-24" \
       "platforms;android-28" \
+      "platforms;android-29" \
+      "platforms;android-30" \
       "system-images;android-19;default;x86" \
       "system-images;android-21;default;x86" \
       "system-images;android-22;default;x86" \

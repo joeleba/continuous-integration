@@ -18,6 +18,7 @@ import argparse
 import base64
 import codecs
 import datetime
+import glob
 import hashlib
 import json
 import multiprocessing
@@ -78,6 +79,12 @@ FLAKY_TESTS_BUCKET = {
     "bazel": "gs://bazel-buildkite-stats/flaky-tests-bep/",
 }[BUILDKITE_ORG]
 
+KZIPS_BUCKET = {
+    "bazel-testing": "gs://bazel-kzips-testing/",
+    "bazel-trusted": "gs://bazel-kzips/",
+    "bazel": "gs://bazel-kzips/",
+}[BUILDKITE_ORG]
+
 # Projects can opt out of receiving GitHub issues from --notify by adding `"do_not_notify": True` to their respective downstream entry.
 DOWNSTREAM_PROJECTS_PRODUCTION = {
     "Android Studio Plugin": {
@@ -104,6 +111,7 @@ DOWNSTREAM_PROJECTS_PRODUCTION = {
         "git_repository": "https://github.com/bazelbuild/codelabs.git",
         "http_config": "https://raw.githubusercontent.com/bazelbuild/codelabs/master/.bazelci/presubmit.yml",
         "pipeline_slug": "bazel-codelabs",
+        "disabled_reason": "https://github.com/bazelbuild/codelabs/issues/38",
     },
     "Bazel Examples": {
         "git_repository": "https://github.com/bazelbuild/examples.git",
@@ -114,6 +122,7 @@ DOWNSTREAM_PROJECTS_PRODUCTION = {
         "git_repository": "https://github.com/bazelbuild/bazel-federation.git",
         "http_config": "https://raw.githubusercontent.com/bazelbuild/bazel-federation/master/.bazelci/presubmit.yml",
         "pipeline_slug": "bazel-federation",
+        "disabled_reason": "https://github.com/bazelbuild/bazel-federation/issues/126",
     },
     "Bazel Remote Cache": {
         "git_repository": "https://github.com/buchgr/bazel-remote.git",
@@ -217,10 +226,10 @@ DOWNSTREAM_PROJECTS_PRODUCTION = {
         "pipeline_slug": "protobuf",
         "owned_by_bazel": True,
     },
-    "Skydoc": {
-        "git_repository": "https://github.com/bazelbuild/skydoc.git",
-        "http_config": "https://raw.githubusercontent.com/bazelbuild/skydoc/master/.bazelci/presubmit.yml",
-        "pipeline_slug": "skydoc",
+    "Stardoc": {
+        "git_repository": "https://github.com/bazelbuild/stardoc.git",
+        "http_config": "https://raw.githubusercontent.com/bazelbuild/stardoc/master/.bazelci/presubmit.yml",
+        "pipeline_slug": "stardoc",
         "owned_by_bazel": True,
     },
     "Subpar": {
@@ -248,6 +257,7 @@ DOWNSTREAM_PROJECTS_PRODUCTION = {
         "git_repository": "https://github.com/bazelbuild/rules_android.git",
         "http_config": "https://raw.githubusercontent.com/bazelbuild/rules_android/master/.bazelci/postsubmit.yml",
         "pipeline_slug": "rules-android",
+        "disabled_reason": "https://github.com/bazelbuild/rules_android/issues/15",
     },
     "rules_appengine": {
         "git_repository": "https://github.com/bazelbuild/rules_appengine.git",
@@ -328,6 +338,7 @@ DOWNSTREAM_PROJECTS_PRODUCTION = {
         "git_repository": "https://github.com/bazelbuild/rules_k8s.git",
         "http_config": "https://raw.githubusercontent.com/bazelbuild/rules_k8s/master/.bazelci/presubmit.yml",
         "pipeline_slug": "rules-k8s-k8s",
+        "disabled_reason": "https://github.com/bazelbuild/rules_k8s/pull/580",
     },
     "rules_kotlin": {
         "git_repository": "https://github.com/bazelbuild/rules_kotlin.git",
@@ -336,7 +347,7 @@ DOWNSTREAM_PROJECTS_PRODUCTION = {
     },
     "rules_nodejs": {
         "git_repository": "https://github.com/bazelbuild/rules_nodejs.git",
-        "http_config": "https://raw.githubusercontent.com/bazelbuild/rules_nodejs/master/.bazelci/presubmit.yml",
+        "http_config": "https://raw.githubusercontent.com/bazelbuild/rules_nodejs/stable/.bazelci/presubmit.yml",
         "pipeline_slug": "rules-nodejs-nodejs",
     },
     "rules_perl": {
@@ -376,11 +387,6 @@ DOWNSTREAM_PROJECTS_PRODUCTION = {
         "http_config": "https://raw.githubusercontent.com/bazelbuild/rules_swift/master/.bazelci/presubmit.yml",
         "pipeline_slug": "rules-swift-swift",
         "do_not_notify": "https://github.com/bazelbuild/continuous-integration/issues/915",
-    },
-    "rules_typescript": {
-        "git_repository": "https://github.com/bazelbuild/rules_typescript.git",
-        "http_config": "https://raw.githubusercontent.com/bazelbuild/rules_typescript/master/.bazelci/presubmit.yml",
-        "pipeline_slug": "rules-typescript-typescript",
     },
     "rules_webtesting": {
         "git_repository": "https://github.com/bazelbuild/rules_webtesting.git",
@@ -467,6 +473,30 @@ PLATFORMS = {
         "docker-image": f"gcr.io/{DOCKER_REGISTRY_PREFIX}/ubuntu1804-nojava",
         "python": "python3.6",
     },
+    "ubuntu2004": {
+        "name": "Ubuntu 20.04, OpenJDK 11",
+        "emoji-name": ":ubuntu: 20.04 (OpenJDK 11)",
+        "downstream-root": "/var/lib/buildkite-agent/builds/${BUILDKITE_AGENT_NAME}/${BUILDKITE_ORGANIZATION_SLUG}-downstream-projects",
+        "publish_binary": [],
+        "docker-image": f"gcr.io/{DOCKER_REGISTRY_PREFIX}/ubuntu2004-java11",
+        "python": "python3.8",
+    },
+    "ubuntu2004_nojava": {
+        "name": "Ubuntu 20.04, no JDK",
+        "emoji-name": ":ubuntu: 20.04 (no JDK)",
+        "downstream-root": "/var/lib/buildkite-agent/builds/${BUILDKITE_AGENT_NAME}/${BUILDKITE_ORGANIZATION_SLUG}-downstream-projects",
+        "publish_binary": [],
+        "docker-image": f"gcr.io/{DOCKER_REGISTRY_PREFIX}/ubuntu2004-nojava",
+        "python": "python3.8",
+    },
+    "kythe_ubuntu2004": {
+        "name": "Kythe (Ubuntu 20.04, OpenJDK 11)",
+        "emoji-name": "Kythe (:ubuntu: 20.04, OpenJDK 11)",
+        "downstream-root": "/var/lib/buildkite-agent/builds/${BUILDKITE_AGENT_NAME}/${BUILDKITE_ORGANIZATION_SLUG}-downstream-projects",
+        "publish_binary": [],
+        "docker-image": f"gcr.io/{DOCKER_REGISTRY_PREFIX}/ubuntu2004-java11-kythe",
+        "python": "python3.8",
+    },
     "macos": {
         "name": "macOS, OpenJDK 8",
         "emoji-name": ":darwin: (OpenJDK 8)",
@@ -503,13 +533,9 @@ DEFAULT_PLATFORM = "ubuntu1804"
 # release platform for all Linux downstream tests.
 LINUX_BINARY_PLATFORM = "centos7"
 
-DEFAULT_XCODE_VERSION = "11.1"
+DEFAULT_XCODE_VERSION = "11.7"
 XCODE_VERSION_REGEX = re.compile(r"^\d+\.\d+(\.\d+)?$")
-XCODE_VERSION_OVERRIDES = {
-    "10.2.1": "10.3",
-    "11.2": "11.2.1",
-    "11.3": "11.3.1",
-}
+XCODE_VERSION_OVERRIDES = {"10.2.1": "10.3", "11.2": "11.2.1", "11.3": "11.3.1"}
 
 ENCRYPTED_SAUCELABS_TOKEN = """
 CiQAry63sOlZtTNtuOT5DAOLkum0rGof+DOweppZY1aOWbat8zwSTQAL7Hu+rgHSOr6P4S1cu4YG
@@ -528,6 +554,14 @@ BUILDIFIER_STEP_NAME = "Buildifier"
 SKIP_TASKS_ENV_VAR = "CI_SKIP_TASKS"
 
 CONFIG_FILE_EXTENSIONS = {".yml", ".yaml"}
+
+KYTHE_DIR = "/usr/local/kythe"
+
+INDEX_UPLOAD_POLICY_ALWAYS = "Always"
+
+INDEX_UPLOAD_POLICY_IF_BUILD_SUCCESS = "IfBuildSuccess"
+
+INDEX_UPLOAD_POLICY_NEVER = "Never"
 
 
 class BuildkiteException(Exception):
@@ -565,9 +599,7 @@ P9w8kNhEbw==
         "https://api.buildkite.com/v2/organizations/{}/pipelines/{}/builds/{}"
     )
 
-    _NEW_BUILD_URL_TEMPLATE = (
-        "https://api.buildkite.com/v2/organizations/{}/pipelines/{}/builds"
-    )
+    _NEW_BUILD_URL_TEMPLATE = "https://api.buildkite.com/v2/organizations/{}/pipelines/{}/builds"
 
     _RETRY_JOB_URL_TEMPLATE = (
         "https://api.buildkite.com/v2/organizations/{}/pipelines/{}/builds/{}/jobs/{}/retry"
@@ -577,7 +609,6 @@ P9w8kNhEbw==
         self._org = org
         self._pipeline = pipeline
         self._token = self._get_buildkite_token()
-
 
     def _get_buildkite_token(self):
         return decrypt_token(
@@ -589,8 +620,7 @@ P9w8kNhEbw==
             else "buildkite-untrusted-api-token",
         )
 
-
-    def _open_url(self, url, params = []):
+    def _open_url(self, url, params=[]):
         try:
             params_str = "".join("&{}={}".format(k, v) for k, v in params)
             return (
@@ -600,7 +630,6 @@ P9w8kNhEbw==
             )
         except urllib.error.HTTPError as ex:
             raise BuildkiteException("Failed to open {}: {} - {}".format(url, ex.code, ex.reason))
-
 
     def get_build_info(self, build_number):
         """Get build info for a pipeline with a given build number
@@ -619,7 +648,6 @@ P9w8kNhEbw==
         output = self._open_url(url)
         return json.loads(output)
 
-
     def get_build_info_list(self, params):
         """Get a list of build infos for this pipeline
         See https://buildkite.com/docs/apis/rest-api/builds#list-builds-for-a-pipeline
@@ -637,10 +665,8 @@ P9w8kNhEbw==
         output = self._open_url(url, params)
         return json.loads(output)
 
-
     def get_build_log(self, job):
         return self._open_url(job["raw_log_url"])
-
 
     @staticmethod
     def _check_response(response, expected_status_code):
@@ -649,8 +675,7 @@ P9w8kNhEbw==
             eprint("Response:\n", response.text)
             response.raise_for_status()
 
-
-    def trigger_new_build(self, commit, message = None, env = {}):
+    def trigger_new_build(self, commit, message=None, env={}):
         """Trigger a new build at a given commit and return the build metadata.
         See https://buildkite.com/docs/apis/rest-api/builds#create-a-build
 
@@ -672,10 +697,9 @@ P9w8kNhEbw==
             "message": message if message else f"Trigger build at {commit}",
             "env": env,
         }
-        response = requests.post(url + "?access_token=" + self._token, json = data)
+        response = requests.post(url + "?access_token=" + self._token, json=data)
         BuildkiteClient._check_response(response, requests.codes.created)
         return json.loads(response.text)
-
 
     def trigger_job_retry(self, build_number, job_id):
         """Trigger a job retry and return the job metadata.
@@ -695,7 +719,6 @@ P9w8kNhEbw==
         response = requests.put(url + "?access_token=" + self._token)
         BuildkiteClient._check_response(response, requests.codes.ok)
         return json.loads(response.text)
-
 
     def wait_job_to_finish(self, build_number, job_id, interval_time=30, logger=None):
         """Wait a job to finish and return the job metadata
@@ -722,14 +745,15 @@ P9w8kNhEbw==
                         return job
                     break
             else:
-                raise BuildkiteException(f"job id {job_id} doesn't exist in build " + build_info["web_url"])
+                raise BuildkiteException(
+                    f"job id {job_id} doesn't exist in build " + build_info["web_url"]
+                )
             url = build_info["web_url"]
             if logger:
                 logger.log(f"Waiting for {url}, waited {t} seconds...")
             time.sleep(interval_time)
             t += interval_time
             build_info = self.get_build_info(build_number)
-
 
     def wait_build_to_finish(self, build_number, interval_time=30, logger=None):
         """Wait a build to finish and return the build metadata
@@ -921,6 +945,25 @@ def bazelisk_flags():
     return ["--migrate"] if use_bazelisk_migrate() else []
 
 
+def calculate_flags(task_config, task_config_key, json_profile_key, tmpdir, test_env_vars):
+    include_json_profile = task_config.get("include_json_profile", [])
+
+    json_profile_flags = []
+    json_profile_out = None
+    if json_profile_key in include_json_profile:
+        json_profile_out = os.path.join(tmpdir, "{}.profile.gz".format(json_profile_key))
+        json_profile_flags = get_json_profile_flags(json_profile_out)
+
+    flags = task_config.get(task_config_key) or []
+    flags += json_profile_flags
+    # We have to add --test_env flags to `build`, too, otherwise Bazel
+    # discards its analysis cache between `build` and `test`.
+    if test_env_vars:
+        flags += ["--test_env={}".format(v) for v in test_env_vars]
+
+    return flags, json_profile_out
+
+
 def execute_commands(
     task_config,
     platform,
@@ -1003,6 +1046,11 @@ def execute_commands(
             # be smart and converts strings like "true" and "false" to booleans.
             os.environ[key] = str(value)
 
+        # Set BAZELISK_SHUTDOWN to 1 when we use bazelisk --migrate on Windows.
+        # This is a workaround for https://github.com/bazelbuild/continuous-integration/issues/1012
+        if use_bazelisk_migrate() and platform == "windows":
+            os.environ["BAZELISK_SHUTDOWN"] = "1"
+
         cmd_exec_func = execute_batch_commands if platform == "windows" else execute_shell_commands
         cmd_exec_func(task_config.get("setup", None))
 
@@ -1037,26 +1085,14 @@ def execute_commands(
         if needs_clean:
             execute_bazel_clean(bazel_binary, platform)
 
-        build_targets, test_targets = calculate_targets(
+        build_targets, test_targets, index_targets = calculate_targets(
             task_config, platform, bazel_binary, build_only, test_only
         )
 
-        include_json_profile = task_config.get("include_json_profile", [])
-
         if build_targets:
-            json_profile_flags = []
-            include_json_profile_build = "build" in include_json_profile
-            json_profile_out_build = None
-            if include_json_profile_build:
-                json_profile_out_build = os.path.join(tmpdir, "build.profile.gz")
-                json_profile_flags = get_json_profile_flags(json_profile_out_build)
-
-            build_flags = task_config.get("build_flags") or []
-            build_flags += json_profile_flags
-            # We have to add --test_env flags to `build`, too, otherwise Bazel
-            # discards its analysis cache between `build` and `test`.
-            if test_env_vars:
-                build_flags += ["--test_env={}".format(v) for v in test_env_vars]
+            build_flags, json_profile_out_build = calculate_flags(
+                task_config, "build_flags", "build", tmpdir, test_env_vars
+            )
             try:
                 execute_bazel_build(
                     bazel_version,
@@ -1070,22 +1106,13 @@ def execute_commands(
                 if save_but:
                     upload_bazel_binary(platform)
             finally:
-                if include_json_profile_build:
+                if json_profile_out_build:
                     upload_json_profile(json_profile_out_build, tmpdir)
 
         if test_targets:
-            json_profile_flags = []
-            include_json_profile_test = "test" in include_json_profile
-            json_profile_out_test = None
-            if include_json_profile_test:
-                json_profile_out_test = os.path.join(tmpdir, "test.profile.gz")
-                json_profile_flags = get_json_profile_flags(json_profile_out_test)
-
-            test_flags = task_config.get("test_flags") or []
-            test_flags += json_profile_flags
-            if test_env_vars:
-                test_flags += ["--test_env={}".format(v) for v in test_env_vars]
-
+            test_flags, json_profile_out_test = calculate_flags(
+                task_config, "test_flags", "test", tmpdir, test_env_vars
+            )
             if not is_windows():
                 # On platforms that support sandboxing (Linux, MacOS) we have
                 # to allow access to Bazelisk's cache directory.
@@ -1117,11 +1144,50 @@ def execute_commands(
                     if monitor_flaky_tests:
                         upload_bep_logs_for_flaky_tests(test_bep_file)
                 finally:
-                    if include_json_profile_test:
+                    if json_profile_out_test:
                         upload_json_profile(json_profile_out_test, tmpdir)
             finally:
                 stop_request.set()
                 upload_thread.join()
+
+        if index_targets:
+            index_flags, json_profile_out_index = calculate_flags(
+                task_config, "index_flags", "index", tmpdir, test_env_vars
+            )
+            index_upload_policy = task_config.get("index_upload_policy", "IfBuildSuccess")
+            index_upload_gcs = task_config.get("index_upload_gcs", False)
+
+            try:
+                should_upload_kzip = (
+                    True if index_upload_policy == INDEX_UPLOAD_POLICY_ALWAYS else False
+                )
+                try:
+                    execute_bazel_build_with_kythe(
+                        bazel_version,
+                        bazel_binary,
+                        platform,
+                        index_flags,
+                        index_targets,
+                        None,
+                        incompatible_flags,
+                    )
+
+                    if index_upload_policy == INDEX_UPLOAD_POLICY_IF_BUILD_SUCCESS:
+                        should_upload_kzip = True
+                except subprocess.CalledProcessError as e:
+                    # If not running with Always policy, raise the build error.
+                    if index_upload_policy != INDEX_UPLOAD_POLICY_ALWAYS:
+                        handle_bazel_failure(e, "build")
+
+                if should_upload_kzip:
+                    try:
+                        merge_and_upload_kythe_kzip(platform, index_upload_gcs)
+                    except subprocess.CalledProcessError:
+                        raise BuildkiteException("Failed to upload kythe kzip")
+            finally:
+                if json_profile_out_index:
+                    upload_json_profile(json_profile_out_index, tmpdir)
+
     finally:
         terminate_background_process(sc_process)
         if tmpdir:
@@ -1237,15 +1303,35 @@ def upload_bazel_binary(platform):
     if platform == "windows":
         binary_dir = r"bazel-bin\src"
         binary_name = r"bazel.exe"
+        binary_nojdk_name = r"bazel_nojdk.exe"
     else:
         binary_dir = "bazel-bin/src"
         binary_name = "bazel"
+        binary_nojdk_name = "bazel_nojdk"
     execute_command(["buildkite-agent", "artifact", "upload", binary_name], cwd=binary_dir)
+    execute_command(["buildkite-agent", "artifact", "upload", binary_nojdk_name], cwd=binary_dir)
 
 
-def download_bazel_binary(dest_dir, platform):
-    binary_name = "bazel.exe" if platform == "windows" else "bazel"
+def merge_and_upload_kythe_kzip(platform, index_upload_gcs):
+    print_collapsed_group(":gcloud: Uploading kythe kzip")
 
+    kzips = glob.glob("bazel-out/*/extra_actions/**/*.kzip", recursive=True)
+
+    build_number = os.getenv("BUILDKITE_BUILD_NUMBER")
+    git_commit = os.getenv("BUILDKITE_COMMIT")
+    final_kzip_name = "{}-{}-{}.kzip".format(build_number, platform, git_commit)
+
+    execute_command([f"{KYTHE_DIR}/tools/kzip", "merge", "--output", final_kzip_name] + kzips)
+    execute_command(["buildkite-agent", "artifact", "upload", final_kzip_name])
+
+    if index_upload_gcs:
+        pipeline = os.getenv("BUILDKITE_PIPELINE_SLUG")
+        destination = KZIPS_BUCKET + pipeline + "/" + final_kzip_name
+        print("Uploading to GCS {}".format(destination))
+        execute_command([gsutil_command(), "cp", final_kzip_name, destination])
+
+
+def download_binary(dest_dir, platform, binary_name):
     source_step = create_label(platform, "Bazel", build_only=True)
     execute_command(
         ["buildkite-agent", "artifact", "download", binary_name, dest_dir, "--step", source_step]
@@ -1256,17 +1342,21 @@ def download_bazel_binary(dest_dir, platform):
     return bazel_binary_path
 
 
-def download_bazel_binary_at_commit(dest_dir, platform, bazel_git_commit):
-    bazel_binary_path = os.path.join(dest_dir, "bazel.exe" if platform == "windows" else "bazel")
+def download_bazel_binary(dest_dir, platform):
+    binary_name = "bazel.exe" if platform == "windows" else "bazel"
+    return download_binary(dest_dir, platform, binary_name)
+
+
+def download_bazel_nojdk_binary(dest_dir, platform):
+    binary_name = "bazel_nojdk.exe" if platform == "windows" else "bazel_nojdk"
+    return download_binary(dest_dir, platform, binary_name)
+
+
+def download_binary_at_commit(
+    dest_dir, platform, bazel_git_commit, bazel_binary_url, bazel_binary_path
+):
     try:
-        execute_command(
-            [
-                gsutil_command(),
-                "cp",
-                bazelci_builds_gs_url(platform, bazel_git_commit),
-                bazel_binary_path,
-            ]
-        )
+        execute_command([gsutil_command(), "cp", bazel_binary_url, bazel_binary_path])
     except subprocess.CalledProcessError as e:
         raise BuildkiteException(
             "Failed to download Bazel binary at %s, error message:\n%s" % (bazel_git_commit, str(e))
@@ -1274,6 +1364,18 @@ def download_bazel_binary_at_commit(dest_dir, platform, bazel_git_commit):
     st = os.stat(bazel_binary_path)
     os.chmod(bazel_binary_path, st.st_mode | stat.S_IEXEC)
     return bazel_binary_path
+
+
+def download_bazel_binary_at_commit(dest_dir, platform, bazel_git_commit):
+    url = bazelci_builds_gs_url(platform, bazel_git_commit)
+    path = os.path.join(dest_dir, "bazel.exe" if platform == "windows" else "bazel")
+    return download_binary_at_commit(dest_dir, platform, bazel_git_commit, url, path)
+
+
+def download_bazel_nojdk_binary_at_commit(dest_dir, platform, bazel_git_commit):
+    url = bazelci_builds_nojdk_gs_url(platform, bazel_git_commit)
+    path = os.path.join(dest_dir, "bazel_nojdk.exe" if platform == "windows" else "bazel_nojdk")
+    return download_binary_at_commit(dest_dir, platform, bazel_git_commit, url, path)
 
 
 def get_mirror_path(git_repository, platform):
@@ -1382,7 +1484,7 @@ def remote_caching_flags(platform):
 
     platform_cache_key = [BUILDKITE_ORG.encode("utf-8")]
     # Whenever the remote cache was known to have been poisoned increase the number below
-    platform_cache_key += ["cache-poisoning-20191015".encode("utf-8")]
+    platform_cache_key += ["cache-poisoning-20201011".encode("utf-8")]
 
     if platform == "macos":
         platform_cache_key += [
@@ -1405,7 +1507,6 @@ def remote_caching_flags(platform):
             "--google_default_credentials",
             "--remote_cache=remotebuildexecution.googleapis.com",
             "--remote_instance_name=projects/{}/instances/default_instance".format(CLOUD_PROJECT),
-            "--tls_enabled=true",
         ]
 
     platform_cache_digest = hashlib.sha256()
@@ -1600,6 +1701,14 @@ def execute_bazel_clean(bazel_binary, platform):
         raise BuildkiteException("bazel clean failed with exit code {}".format(e.returncode))
 
 
+def kythe_startup_flags():
+    return [f"--bazelrc={KYTHE_DIR}/extractors.bazelrc"]
+
+
+def kythe_build_flags():
+    return [f"--override_repository=kythe_release={KYTHE_DIR}"]
+
+
 def execute_bazel_build(
     bazel_version, bazel_binary, platform, flags, targets, bep_file, incompatible_flags
 ):
@@ -1630,14 +1739,58 @@ def execute_bazel_build(
         handle_bazel_failure(e, "build")
 
 
+def execute_bazel_build_with_kythe(
+    bazel_version, bazel_binary, platform, flags, targets, bep_file, incompatible_flags
+):
+    print_collapsed_group(":bazel: Computing flags for build step")
+    aggregated_flags = compute_flags(
+        platform,
+        flags,
+        # When using bazelisk --migrate to test incompatible flags,
+        # incompatible flags set by "INCOMPATIBLE_FLAGS" env var will be ignored.
+        [] if (use_bazelisk_migrate() or not incompatible_flags) else incompatible_flags,
+        bep_file,
+        bazel_binary,
+        enable_remote_cache=False,
+    )
+
+    print_expanded_group(":bazel: Build ({})".format(bazel_version))
+
+    execute_command(
+        [bazel_binary]
+        + bazelisk_flags()
+        + common_startup_flags(platform)
+        + kythe_startup_flags()
+        + ["build"]
+        + kythe_build_flags()
+        + aggregated_flags
+        + ["--"]
+        + targets
+    )
+
+
 def calculate_targets(task_config, platform, bazel_binary, build_only, test_only):
     build_targets = [] if test_only else task_config.get("build_targets", [])
     test_targets = [] if build_only else task_config.get("test_targets", [])
+    index_targets = [] if (build_only or test_only) else task_config.get("index_targets", [])
+
+    index_targets_query = (
+        None if (build_only or test_only) else task_config.get("index_targets_query", None)
+    )
+    if index_targets_query:
+        output = execute_command_and_get_output(
+            [bazel_binary]
+            + common_startup_flags(platform)
+            + ["--nomaster_bazelrc", "--bazelrc=/dev/null", "query", index_targets_query],
+            print_output=False,
+        )
+        index_targets += output.strip().split("\n")
 
     # Remove the "--" argument splitter from the list that some configs explicitly
     # include. We'll add it back again later where needed.
     build_targets = [x.strip() for x in build_targets if x.strip() != "--"]
     test_targets = [x.strip() for x in test_targets if x.strip() != "--"]
+    index_targets = [x.strip() for x in index_targets if x.strip() != "--"]
 
     shard_id = int(os.getenv("BUILDKITE_PARALLEL_JOB", "-1"))
     shard_count = int(os.getenv("BUILDKITE_PARALLEL_JOB_COUNT", "-1"))
@@ -1650,7 +1803,7 @@ def calculate_targets(task_config, platform, bazel_binary, build_only, test_only
         expanded_test_targets = expand_test_target_patterns(bazel_binary, platform, test_targets)
         test_targets = get_targets_for_shard(expanded_test_targets, shard_id, shard_count)
 
-    return build_targets, test_targets
+    return build_targets, test_targets, index_targets
 
 
 def expand_test_target_patterns(bazel_binary, platform, test_targets):
@@ -1980,6 +2133,11 @@ def print_project_pipeline(
         raise BuildkiteException("{0} pipeline configuration is empty.".format(project_name))
 
     pipeline_steps = []
+    # If the repository is hosted on Git-on-borg, we show the link to the commit Gerrit review
+    buildkite_repo = os.getenv("BUILDKITE_REPO")
+    if is_git_on_borg_repo(buildkite_repo):
+        show_gerrit_review_link(buildkite_repo, pipeline_steps)
+
     task_configs = filter_tasks_that_should_be_skipped(task_configs, pipeline_steps)
 
     # In Bazel Downstream Project pipelines, git_repository and project_name must be specified.
@@ -2030,12 +2188,26 @@ def print_project_pipeline(
         git_commit = get_last_green_commit(last_green_commit_url)
 
     config_hashes = set()
+    skipped_due_to_bazel_version = []
     for task, task_config in task_configs.items():
+        platform = get_platform_for_task(task, task_config)
+        task_name = task_config.get("name")
+
         # We override the Bazel version in downstream pipelines. This means that two tasks that
         # only differ in the value of their explicit "bazel" field will be identical in the
         # downstream pipeline, thus leading to duplicate work.
         # Consequently, we filter those duplicate tasks here.
         if is_downstream_project:
+            # Skip tasks that require a specific Bazel version
+            bazel = task_config.get("bazel")
+            if bazel and bazel != "latest":
+                skipped_due_to_bazel_version.append(
+                    "{}: '{}'".format(
+                        create_label(platform, project_name, task_name=task_name), bazel
+                    )
+                )
+                continue
+
             h = hash_task_config(task, task_config)
             if h in config_hashes:
                 continue
@@ -2048,9 +2220,9 @@ def print_project_pipeline(
             raise BuildkiteException("Task {} has invalid shard value '{}'".format(task, shards))
 
         step = runner_step(
-            platform=get_platform_for_task(task, task_config),
+            platform=platform,
             task=task,
-            task_name=task_config.get("name"),
+            task_name=task_name,
             project_name=project_name,
             http_config=http_config,
             file_config=file_config,
@@ -2063,24 +2235,38 @@ def print_project_pipeline(
         )
         pipeline_steps.append(step)
 
+    if skipped_due_to_bazel_version:
+        lines = ["The following tasks were skipped since they require specific Bazel versions:", ""]
+        lines += ["- {}".format(s) for s in skipped_due_to_bazel_version]
+        commands = [
+            "buildkite-agent annotate --style=info '{}' --context 'ctx-skipped_due_to_bazel_version'".format(
+                "\n".join(lines)
+            )
+        ]
+        pipeline_steps.append(
+            create_step(
+                label=":pipeline: Print information about skipped tasks due to different Bazel versions",
+                commands=commands,
+                platform=DEFAULT_PLATFORM,
+            )
+        )
+
     pipeline_slug = os.getenv("BUILDKITE_PIPELINE_SLUG")
     all_downstream_pipeline_slugs = []
     for _, config in DOWNSTREAM_PROJECTS.items():
         all_downstream_pipeline_slugs.append(config["pipeline_slug"])
-    # We don't need to update last green commit in the following cases:
-    #   1. This job is a GitHub pull request
-    #   2. This job uses a custom built Bazel binary (in Bazel Downstream Projects pipeline)
-    #   3. This job doesn't run on master branch (could be a custom build launched manually)
-    #   4. We don't intend to run the same job in downstream with Bazel@HEAD (eg. google-bazel-presubmit)
-    #   5. We are testing incompatible flags
-    #   6. We are running `bazelisk --migrate` in a non-downstream pipeline
-    if not (
-        is_pull_request()
-        or use_but
-        or os.getenv("BUILDKITE_BRANCH") != "master"
-        or pipeline_slug not in all_downstream_pipeline_slugs
-        or incompatible_flags
-        or use_bazelisk_migrate()
+    # We update last green commit in the following cases:
+    #   1. This job runs on master, stable or main branch (could be a custom build launched manually)
+    #   2. We intend to run the same job in downstream with Bazel@HEAD (eg. google-bazel-presubmit)
+    #   3. This job is not:
+    #      - a GitHub pull request
+    #      - uses a custom built Bazel binary (in Bazel Downstream Projects pipeline)
+    #      - testing incompatible flags
+    #      - running `bazelisk --migrate` in a non-downstream pipeline
+    if (
+        os.getenv("BUILDKITE_BRANCH") in ("master", "stable", "main")
+        and pipeline_slug in all_downstream_pipeline_slugs
+        and not (is_pull_request() or use_but or incompatible_flags or use_bazelisk_migrate())
     ):
         # We need to call "Try Update Last Green Commit" even if there are failures,
         # since we don't want a failing Buildifier step to block the update of
@@ -2111,6 +2297,27 @@ def print_project_pipeline(
         pipeline_steps += get_steps_for_aggregating_migration_results(number, notify)
 
     print_pipeline_steps(pipeline_steps, handle_emergencies=not is_downstream_project)
+
+
+def show_gerrit_review_link(git_repository, pipeline_steps):
+    host = re.search(r"https://(.+?)\.googlesource", git_repository).group(1)
+    if not host:
+        raise BuildkiteException("Couldn't get host name from %s" % git_repository)
+    text = "The transformed code used in this pipeline can be found under https://{}-review.googlesource.com/q/{}".format(
+        host, os.getenv("BUILDKITE_COMMIT")
+    )
+    commands = ["buildkite-agent annotate --style=info '{}'".format(text)]
+    pipeline_steps.append(
+        create_step(
+            label=":pipeline: Print information about Gerrit Review Link",
+            commands=commands,
+            platform=DEFAULT_PLATFORM,
+        )
+    )
+
+
+def is_git_on_borg_repo(git_repository):
+    return git_repository and "googlesource.com" in git_repository
 
 
 def hash_task_config(task_name, task_config):
@@ -2568,6 +2775,10 @@ def print_bazel_downstream_pipeline(
     incompatible_flags = None
     if test_incompatible_flags:
         incompatible_flags_map = fetch_incompatible_flags()
+        if not incompatible_flags_map:
+            raise BuildkiteException(
+                "No incompatible flag issue is found on github for current version of Bazel."
+            )
         info_box_step = print_incompatible_flags_info_box_step(incompatible_flags_map)
         if info_box_step is not None:
             pipeline_steps.append(info_box_step)
@@ -2665,14 +2876,31 @@ def bazelci_builds_download_url(platform, git_commit):
     )
 
 
+def bazelci_builds_nojdk_download_url(platform, git_commit):
+    bucket_name = "bazel-testing-builds" if THIS_IS_TESTING else "bazel-builds"
+    return "https://storage.googleapis.com/{}/artifacts/{}/{}/bazel_nojdk".format(
+        bucket_name, platform, git_commit
+    )
+
+
 def bazelci_builds_gs_url(platform, git_commit):
     bucket_name = "bazel-testing-builds" if THIS_IS_TESTING else "bazel-builds"
     return "gs://{}/artifacts/{}/{}/bazel".format(bucket_name, platform, git_commit)
 
 
-def bazelci_builds_metadata_url():
+def bazelci_builds_nojdk_gs_url(platform, git_commit):
+    bucket_name = "bazel-testing-builds" if THIS_IS_TESTING else "bazel-builds"
+    return "gs://{}/artifacts/{}/{}/bazel_nojdk".format(bucket_name, platform, git_commit)
+
+
+def bazelci_latest_build_metadata_url():
     bucket_name = "bazel-testing-builds" if THIS_IS_TESTING else "bazel-builds"
     return "gs://{}/metadata/latest.json".format(bucket_name)
+
+
+def bazelci_builds_metadata_url(git_commit):
+    bucket_name = "bazel-testing-builds" if THIS_IS_TESTING else "bazel-builds"
+    return "gs://{}/metadata/{}.json".format(bucket_name, git_commit)
 
 
 def bazelci_last_green_commit_url(git_repository, pipeline_slug):
@@ -2786,7 +3014,7 @@ def latest_generation_and_build_number():
     output = None
     for attempt in range(5):
         output = subprocess.check_output(
-            [gsutil_command(), "stat", bazelci_builds_metadata_url()], env=os.environ
+            [gsutil_command(), "stat", bazelci_latest_build_metadata_url()], env=os.environ
         )
         match = re.search("Generation:[ ]*([0-9]+)", output.decode("utf-8"))
         if not match:
@@ -2799,7 +3027,7 @@ def latest_generation_and_build_number():
         expected_md5hash = base64.b64decode(match.group(1))
 
         output = subprocess.check_output(
-            [gsutil_command(), "cat", bazelci_builds_metadata_url()], env=os.environ
+            [gsutil_command(), "cat", bazelci_latest_build_metadata_url()], env=os.environ
         )
         hasher = hashlib.md5()
         hasher.update(output)
@@ -2823,9 +3051,10 @@ def upload_bazel_binaries():
     """
     Uploads all Bazel binaries to a deterministic URL based on the current Git commit.
 
-    Returns a map of platform names to sha256 hashes of the corresponding Bazel binary.
+    Returns maps of platform names to sha256 hashes of the corresponding bazel and bazel_nojdk binaries.
     """
-    hashes = {}
+    bazel_hashes = {}
+    bazel_nojdk_hashes = {}
     for platform_name, platform in PLATFORMS.items():
         if not should_publish_binaries_for_platform(platform_name):
             continue
@@ -2844,13 +3073,28 @@ def upload_bazel_binaries():
                         bazelci_builds_gs_url(target_platform_name, os.environ["BUILDKITE_COMMIT"]),
                     ]
                 )
-                hashes[target_platform_name] = sha256_hexdigest(bazel_binary_path)
+                bazel_hashes[target_platform_name] = sha256_hexdigest(bazel_binary_path)
+
+            # Also publish bazel_nojdk binaries.
+            bazel_nojdk_binary_path = download_bazel_nojdk_binary(tmpdir, platform_name)
+            for target_platform_name in platform["publish_binary"]:
+                execute_command(
+                    [
+                        gsutil_command(),
+                        "cp",
+                        bazel_nojdk_binary_path,
+                        bazelci_builds_nojdk_gs_url(
+                            target_platform_name, os.environ["BUILDKITE_COMMIT"]
+                        ),
+                    ]
+                )
+                bazel_nojdk_hashes[target_platform_name] = sha256_hexdigest(bazel_nojdk_binary_path)
         finally:
             shutil.rmtree(tmpdir)
-    return hashes
+    return bazel_hashes, bazel_nojdk_hashes
 
 
-def try_publish_binaries(hashes, build_number, expected_generation):
+def try_publish_binaries(bazel_hashes, bazel_nojdk_hashes, build_number, expected_generation):
     """
     Uploads the info.json file that contains information about the latest Bazel commit that was
     successfully built on CI.
@@ -2863,10 +3107,12 @@ def try_publish_binaries(hashes, build_number, expected_generation):
         "git_commit": git_commit,
         "platforms": {},
     }
-    for platform, sha256 in hashes.items():
+    for platform, sha256 in bazel_hashes.items():
         info["platforms"][platform] = {
             "url": bazelci_builds_download_url(platform, git_commit),
             "sha256": sha256,
+            "nojdk_url": bazelci_builds_nojdk_download_url(platform, git_commit),
+            "nojdk_sha256": bazel_nojdk_hashes[platform],
         }
     tmpdir = tempfile.mkdtemp()
     try:
@@ -2884,11 +3130,20 @@ def try_publish_binaries(hashes, build_number, expected_generation):
                     "Content-Type:application/json",
                     "cp",
                     info_file,
-                    bazelci_builds_metadata_url(),
+                    bazelci_latest_build_metadata_url(),
                 ]
             )
         except subprocess.CalledProcessError:
             raise BinaryUploadRaceException()
+
+        execute_command(
+            [
+                gsutil_command(),
+                "cp",
+                bazelci_latest_build_metadata_url(),
+                bazelci_builds_metadata_url(git_commit),
+            ]
+        )
     finally:
         shutil.rmtree(tmpdir)
 
@@ -2903,7 +3158,7 @@ def publish_binaries():
     current_build_number = int(current_build_number)
 
     # Upload the Bazel binaries for this commit.
-    hashes = upload_bazel_binaries()
+    bazel_hashes, bazel_nojdk_hashes = upload_bazel_binaries()
 
     # Try to update the info.json with data about our build. This will fail (expectedly) if we're
     # not the latest build.
@@ -2920,14 +3175,16 @@ def publish_binaries():
             break
 
         try:
-            try_publish_binaries(hashes, current_build_number, latest_generation)
+            try_publish_binaries(
+                bazel_hashes, bazel_nojdk_hashes, current_build_number, latest_generation
+            )
         except BinaryUploadRaceException:
             # Retry.
             continue
 
         eprint(
             "Successfully updated '{0}' to binaries from build {1}.".format(
-                bazelci_builds_metadata_url(), current_build_number
+                bazelci_latest_build_metadata_url(), current_build_number
             )
         )
         break

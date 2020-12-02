@@ -1,4 +1,4 @@
-FROM ubuntu:16.04 as ubuntu1604-bazel-java8
+FROM ubuntu:20.04 as ubuntu2004-bazel-nojava
 ENV DEBIAN_FRONTEND="noninteractive"
 ARG BUILDARCH
 
@@ -8,8 +8,8 @@ ENV LC_ALL "C.UTF-8"
 
 ### Install packages required by Bazel and its tests
 RUN dpkg --add-architecture i386 && \
-    apt-get -qqy update && \
-    apt-get -qqy install --no-install-recommends \
+    apt-get -y update && \
+    apt-get -y install --no-install-recommends \
     apt-utils \
     bind9-host \
     build-essential \
@@ -35,17 +35,17 @@ RUN dpkg --add-architecture i386 && \
     llvm-dev \
     lsb-release \
     netcat-openbsd \
-    openjdk-8-jdk \
-    python \
-    python-dev \
-    python-six \
+    python-is-python3 \
+    python2 \
+    python2-dev \
     python3 \
     python3-dev \
     python3-pip \
+    python3-requests \
     python3-setuptools \
     python3-six \
     python3-wheel \
-    realpath \
+    python3-yaml \
     software-properties-common \
     unzip \
     wget \
@@ -56,15 +56,21 @@ RUN dpkg --add-architecture i386 && \
     apt-get -qqy purge apport && \
     rm -rf /var/lib/apt/lists/*
 
-ENV JAVA_HOME /usr/lib/jvm/java-8-openjdk-amd64
+FROM ubuntu2004-bazel-nojava AS ubuntu2004-bazel-java11
+RUN apt-get -qqy update && \
+    apt-get -qqy install --no-install-recommends openjdk-11-jdk && \
+    rm -rf /var/lib/apt/lists/*
+ENV JAVA_HOME /usr/lib/jvm/java-11-openjdk-amd64
 
-FROM ubuntu1604-bazel-java8 AS ubuntu1604-java8
+FROM ubuntu2004-bazel-nojava AS ubuntu2004-nojava
 COPY --from=gcr.io/bazel-public/base:bazelisk /usr/local/bin/bazel /usr/local/bin/bazel
 COPY --from=gcr.io/bazel-public/base:buildifier /usr/local/bin/buildifier /usr/local/bin/buildifier
 COPY --from=gcr.io/bazel-public/base:saucelabs /usr/local/bin/sc /usr/local/bin/sc
 
 ### Install required packages.
 RUN apt-get -qqy update && \
+    echo "Installing packages required by Tensorflow" && \
+    apt-get -qqy install libcurl3-dev swig python3-mock python3-numpy python3-wheel && \
     echo "Installing packages required by Envoy" && \
     apt-get -qqy install automake autotools-dev cmake libtool m4 ninja-build && \
     echo "Installing packages required by Android emulator" && \
@@ -74,7 +80,7 @@ RUN apt-get -qqy update && \
     echo "Installing packages required by Swift toolchain" && \
     apt-get -qqy install libicu-dev && \
     echo "Installing packages required by rules_webtesting" && \
-    apt-get -qqy install python-urllib3 python3-urllib3 && \
+    apt-get -qqy install python3-urllib3 && \
     echo "Installing packages required by Kythe" && \
     apt-get -qqy install bison flex uuid-dev asciidoc graphviz source-highlight && \
     echo "Installing packages required by upb" && \
@@ -85,26 +91,12 @@ RUN apt-get -qqy update && \
     apt-get -qqy install openssh-client && \
     rm -rf /var/lib/apt/lists/*
 
-### Install Python (required by our own bazelci.py script).
-RUN export PYTHON_VERSION="3.6.8" && \
-    mkdir -p /usr/local/src && \
-    cd /usr/local/src && \
-    curl -LO "https://www.python.org/ftp/python/${PYTHON_VERSION}/Python-${PYTHON_VERSION}.tar.xz" && \
-    tar xfJ "Python-${PYTHON_VERSION}.tar.xz" && \
-    rm "Python-${PYTHON_VERSION}.tar.xz" && \
-    cd "Python-${PYTHON_VERSION}" && \
-    echo "_ssl _ssl.c -DUSE_SSL -I/usr/include -I/usr/include/openssl -L/usr/lib -lssl -lcrypto" >> Modules/Setup.dist && \
-    echo "Compiling Python ${PYTHON_VERSION} ..." && \
-    ./configure --quiet --enable-ipv6 && \
-    make -s -j all && \
-    echo "Installing Python ${PYTHON_VERSION} ..." && \
-    make -s altinstall && \
-    pip3.6 install requests==2.22.0 pyyaml==3.13 && \
-    rm -rf "/usr/local/src/Python-${PYTHON_VERSION}"
+### Install Python packages required by Tensorflow.
+RUN pip3 install keras_applications keras_preprocessing future
 
 ### Install Google Cloud SDK.
 ### https://cloud.google.com/sdk/docs/quickstart-debian-ubuntu
-RUN export CLOUD_SDK_REPO="cloud-sdk-$(lsb_release -c -s)" && \
+RUN export CLOUD_SDK_REPO="cloud-sdk-bionic" && \
     echo "deb http://packages.cloud.google.com/apt $CLOUD_SDK_REPO main" | tee -a /etc/apt/sources.list.d/google-cloud-sdk.list && \
     curl -L https://packages.cloud.google.com/apt/doc/apt-key.gpg | apt-key add - && \
     apt-get -qqy update && \
@@ -128,3 +120,23 @@ RUN curl -sL https://deb.nodesource.com/setup_12.x | bash - && \
 ### Install Go.
 ENV GO_HOME "/opt/go1.15.2.linux-amd64"
 ENV PATH "${PATH}:${GO_HOME}/bin"
+
+### Install Swift toolchain (required by rules_swift).
+ENV SWIFT_HOME "/opt/swift-5.2.5-RELEASE-ubuntu20.04"
+ENV PATH "${PATH}:${SWIFT_HOME}/usr/bin"
+
+# TODO: Remove once release builds happen on Kokoro.
+COPY --from=gcr.io/bazel-public/base:github-release /usr/local/bin/github-release /usr/local/bin/github-release
+
+FROM ubuntu2004-nojava AS ubuntu2004-java11
+RUN apt-get -qqy update && \
+    apt-get -qqy install --no-install-recommends openjdk-11-jdk && \
+    rm -rf /var/lib/apt/lists/*
+ENV JAVA_HOME /usr/lib/jvm/java-11-openjdk-amd64
+
+FROM ubuntu2004-java11 AS ubuntu2004-java11-kythe
+RUN mkdir /usr/local/kythe && \
+    curl -sSL https://github.com/kythe/kythe/releases/download/v0.0.45/kythe-v0.0.45.tar.gz | \
+    tar xvz --no-same-owner --strip-components 1 --directory /usr/local/kythe && \
+    chmod -R a+r /usr/local/kythe && \
+    test -f /usr/local/kythe/WORKSPACE

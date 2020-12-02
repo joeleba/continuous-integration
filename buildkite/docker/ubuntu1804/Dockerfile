@@ -117,12 +117,19 @@ RUN curl -sL https://deb.nodesource.com/setup_12.x | bash - && \
     apt-get -qqy install nodejs && \
     rm -rf /var/lib/apt/lists/*
 
+### Install clang-9 and clang-10 (for Envoy).
+RUN wget https://apt.llvm.org/llvm.sh && \
+    bash llvm.sh 9 && \
+    bash llvm.sh 10 && \
+    rm -f llvm.sh && \
+    rm -rf /var/lib/apt/lists/*
+
 ### Install Go.
-ENV GO_HOME "/opt/go1.13.8.linux-amd64"
+ENV GO_HOME "/opt/go1.15.2.linux-amd64"
 ENV PATH "${PATH}:${GO_HOME}/bin"
 
 ### Install Swift toolchain (required by rules_swift).
-ENV SWIFT_HOME "/opt/swift-4.2.1-RELEASE-ubuntu18.04"
+ENV SWIFT_HOME "/opt/swift-5.2.5-RELEASE-ubuntu18.04"
 ENV PATH "${PATH}:${SWIFT_HOME}/usr/bin"
 
 # TODO: Remove once release builds happen on Kokoro.

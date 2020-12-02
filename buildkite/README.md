@@ -44,6 +44,8 @@ You can view the failed test attempt's `test.log` file in the *Artifacts* tab.
 
 ![buildkite useful buttons]
 
+![buildkite testlog buttons]
+
 ## Pull Requests
 
 Bazel accepts contributions via pull requests. Contributions by members of the [bazelbuild]
@@ -70,22 +72,6 @@ for an example.
 
 ![pull request details]
 
-[Buildkite]: https://buildkite.com
-[buildkite folder]: https://github.com/bazelbuild/continuous-integration/tree/master/buildkite
-[rules_go]: https://github.com/bazelbuild/rules_go
-[Bazel]: https://github.com/bazelbuild/bazel
-[bazelbuild]: https://github.com/bazelbuild/
-
-[pipelines]: https://raw.githubusercontent.com/bazelbuild/continuous-integration/master/buildkite/docs/assets/pipelines.png
-[failed build step]: https://raw.githubusercontent.com/bazelbuild/continuous-integration/master/buildkite/docs/assets/failed-build-step.png
-[flaky test]: https://raw.githubusercontent.com/bazelbuild/continuous-integration/master/buildkite/docs/assets/flaky-test.png
-[flaky test log]: https://raw.githubusercontent.com/bazelbuild/continuous-integration/master/buildkite/docs/assets/flaky-test-log.png
-[status verify pull request]: https://raw.githubusercontent.com/bazelbuild/continuous-integration/master/buildkite/docs/assets/status-verify-pull-request.png
-[buildkite verify pull request]: https://raw.githubusercontent.com/bazelbuild/continuous-integration/master/buildkite/docs/assets/buildkite-verify-pull-request.png
-[pull request details]: https://raw.githubusercontent.com/bazelbuild/continuous-integration/master/buildkite/docs/assets/pull-request-details.png
-[buildkite useful buttons]: https://raw.githubusercontent.com/bazelbuild/continuous-integration/master/buildkite/docs/assets/buildkite-useful-buttons.png
-
-
 ## Presubmit for downstream projects
 
 You can preview the effect of an unmerged commit on downstream projects. See [Testing Local Changes With All Downstream Projects](https://github.com/bazelbuild/continuous-integration/blob/master/docs/downstream-testing.md).
@@ -97,7 +83,6 @@ runs [`bazelisk --migrate`](https://github.com/bazelbuild/bazelisk#other-feature
 a summary of all incompatible flags and migrations statuses of downstream projects.
 
 The pipeline runs every night against the latest Bazel release. You can also schedule manual builds and set [`USE_BAZEL_VERSION`](https://github.com/bazelbuild/bazelisk#how-does-bazelisk-know-which-version-to-run) to run against a specific release or a release candidate (e.g. `USE_BAZEL_VERSION=0.29rc3` to test against RC3 of release 0.29)
-
 
 ## Culprit Finder
 
@@ -127,7 +112,6 @@ BAD_BAZEL_COMMIT=91eb3d207714af0ab1e5812252a0f10f40d6e4a8
 ```
 
 Note: Bazel commit can only be set to commits after [63453bdbc6b05bd201375ee9e25b35010ae88aab](https://github.com/bazelbuild/bazel/commit/63453bdbc6b05bd201375ee9e25b35010ae88aab), Culprit Finder needs to download Bazel at specific commit, but we didn't prebuild Bazel binaries before this commit.
-
 
 ## Bazel Auto Sheriff
 
@@ -166,7 +150,6 @@ After the analysis, the pipeline will give a summary of four kinds of breakages:
 - Flaky builds.
 
 You can check the analysis log for more details.
-
 
 ## Configuring a Pipeline
 
@@ -275,6 +258,36 @@ tasks:
     name: "some :emoji:"
     build_targets:
     - "..."
+```
+
+### Generating semantic information with Kythe
+
+You can use `kythe_ubuntu2004` platform along with some `index_*` fields to create a task that generate semantic information of your code with [Kythe](https://kythe.io/).
+
+The `index_targets` field contains list of targets that should be indexed.
+
+The `index_targets_query` field contains a query string that is used to generate additional index targets by command `bazel query ${index_targets_query}`. The returned targets will be merged into `index_targets`.
+
+The `index_flags` field contains list of build flags that should be used when indexing.
+
+The `index_upload_policy` field is used to set policy for uploading generated files. Available values are:
+  - `Always`: Always upload generated files even build failed.
+  - `IfBuildSuccess`: __Default value__. Only upload generated files if build succeed and raise error when build failed.
+  - `Never`: Never upload index files and raise error when build failed.
+
+If `index_upload_gcs` is `True`, the generated files will be uploaded to Google Cloud Storage.
+
+```yaml
+---
+tasks:
+  kythe_ubuntu2004:
+    index_targets:
+    - "..."
+    index_targets_query: "kind(\"java_(binary|import|library|plugin|test|proto_library) rule\", ...)"
+    index_flags:
+    - "--define=kythe_corpus=github.com/bazelbuild/bazel"
+    index_upload_policy: "IfBuildSuccess"
+    index_upload_gcs: True
 ```
 
 ### Legacy Format
@@ -488,3 +501,35 @@ tasks:
 When `include_json_profile` is specified with `build`, the builds will be carried out with the extra JSON profile flags. Similarly for `test`. Other values will be ignored.
 
 The exported JSON profiles are available as artifacts after each run.
+
+## FAQ
+
+### My tests fail on Bazel CI due to "Error downloading"
+
+**Q:** I added or changed an external repository and now my test is failing on Bazel CI only with errors like this:
+
+```
+WARNING: Download from https://github.com/bazelbuild/java_tools/releases/download/javac11-v11.0/java_tools_javac11_linux-v11.0.zip failed: class java.net.ConnectException Operation not permitted (connect failed)
+ERROR: An error occurred during the fetch of repository 'remote_java_tools_linux_beta':
+   java.io.IOException: Error downloading [https://github.com/bazelbuild/java_tools/releases/download/javac11-v11.0/java_tools_javac11_linux-v11.0.zip] to /private/var/tmp/_bazel_buildkite/c3a616e1648c5e14a8ab09d0d59696c2/sandbox/darwin-sandbox/3279/execroot/io_bazel/_tmp/58d272c7f3dd803b2bcb2fc7be47d391/root/fb8b458bcc92813a6fcf57a0dbe6e8bd/external/remote_java_tools_linux_beta/java_tools_javac11_linux-v11.0.zip: Operation not permitted (connect failed)
+```
+
+**A:** We run most tests on CI without network access and instead inject the external repositories from the outside. This saves a lot of network traffic and I/O (because the Bazel integration tests don't have to extract the repository archives again and again).
+
+In the code review of this PR, philwo@ explained how to fix test failures like this: https://github.com/bazelbuild/bazel/pull/11436.
+
+[Buildkite]: https://buildkite.com
+[buildkite folder]: https://github.com/bazelbuild/continuous-integration/tree/master/buildkite
+[rules_go]: https://github.com/bazelbuild/rules_go
+[Bazel]: https://github.com/bazelbuild/bazel
+[bazelbuild]: https://github.com/bazelbuild/
+
+[pipelines]: https://raw.githubusercontent.com/bazelbuild/continuous-integration/master/buildkite/docs/assets/pipelines.png
+[failed build step]: https://raw.githubusercontent.com/bazelbuild/continuous-integration/master/buildkite/docs/assets/failed-build-step.png
+[flaky test]: https://raw.githubusercontent.com/bazelbuild/continuous-integration/master/buildkite/docs/assets/flaky-test.png
+[flaky test log]: https://raw.githubusercontent.com/bazelbuild/continuous-integration/master/buildkite/docs/assets/flaky-test-log.png
+[status verify pull request]: https://raw.githubusercontent.com/bazelbuild/continuous-integration/master/buildkite/docs/assets/status-verify-pull-request.png
+[buildkite verify pull request]: https://raw.githubusercontent.com/bazelbuild/continuous-integration/master/buildkite/docs/assets/buildkite-verify-pull-request.png
+[pull request details]: https://raw.githubusercontent.com/bazelbuild/continuous-integration/master/buildkite/docs/assets/pull-request-details.png
+[buildkite useful buttons]: https://raw.githubusercontent.com/bazelbuild/continuous-integration/master/buildkite/docs/assets/buildkite-useful-buttons.png
+[buildkite testlog buttons]: https://raw.githubusercontent.com/bazelbuild/continuous-integration/master/buildkite/docs/assets/buildkite-testlog-buttons.png

@@ -14,6 +14,7 @@ case $(git symbolic-ref --short HEAD) in
         exit 1
 esac
 
+# Containers used by Bazel CI
 docker push "gcr.io/$PREFIX/centos7-java8"
 docker push "gcr.io/$PREFIX/centos7-releaser"
 docker push "gcr.io/$PREFIX/debian10-java11"
@@ -22,3 +23,10 @@ docker push "gcr.io/$PREFIX/ubuntu1604-java8"
 docker push "gcr.io/$PREFIX/ubuntu1804-bazel-java11"
 docker push "gcr.io/$PREFIX/ubuntu1804-java11"
 docker push "gcr.io/$PREFIX/ubuntu1804-nojava"
+docker push "gcr.io/$PREFIX/ubuntu2004-bazel-java11"
+docker push "gcr.io/$PREFIX/ubuntu2004-java11"
+docker push "gcr.io/$PREFIX/ubuntu2004-java11-kythe"
+docker push "gcr.io/$PREFIX/ubuntu2004-nojava"
+
+# Other containers
+docker push "gcr.io/$PREFIX/bazel-slack-inviter-slackin"

@@ -5,7 +5,7 @@ RUN apt-get -qqy update && \
     rm -rf /var/lib/apt/lists/*
 
 FROM builder AS bazelisk
-RUN curl -Lo /usr/local/bin/bazel https://github.com/bazelbuild/bazelisk/releases/download/v1.3.0/bazelisk-linux-amd64 && \
+RUN curl -Lo /usr/local/bin/bazel https://github.com/bazelbuild/bazelisk/releases/download/v1.5.0/bazelisk-linux-amd64 && \
     chown root:root /usr/local/bin/bazel && \
     chmod 0755 /usr/local/bin/bazel
 
@@ -24,8 +24,8 @@ RUN curl -L https://github.com/c4milo/github-release/releases/download/v1.1.0/gi
 
 ### Install Sauce Connect (for rules_webtesting).
 FROM builder AS saucelabs
-RUN curl -L https://saucelabs.com/downloads/sc-4.5.4-linux.tar.gz | \
-    tar xz -C /usr/local --strip=1 sc-4.5.4-linux/bin/sc && \
+RUN curl -L https://saucelabs.com/downloads/sc-4.6.2-linux.tar.gz | \
+    tar xz -C /usr/local --strip=1 sc-4.6.2-linux/bin/sc && \
     chown root:root /usr/local/bin/sc && \
     chmod 0755 /usr/local/bin/sc
 

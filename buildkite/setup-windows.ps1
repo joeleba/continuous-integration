@@ -71,7 +71,7 @@ Write-Host "Installing curl..."
 ## Install LLVM/Clang
 Write-Host "Installing llvm..."
 # FYI: choco installs clang in C:\Program Files\LLVM\bin (which is not on the PATH).
-& choco install llvm
+& choco install llvm --version=10.0.0
 [Environment]::SetEnvironmentVariable("BAZEL_LLVM", "C:\Program Files\LLVM", "Machine")
 $env:BAZEL_LLVM = [Environment]::GetEnvironmentVariable("BAZEL_LLVM", "Machine")
 
@@ -97,6 +97,8 @@ Write-Host "Installing Git for Windows..."
 $env:PATH = [Environment]::GetEnvironmentVariable("PATH", "Machine")
 # Don't convert the line endings when cloning the repository because that could break some tests
 & git config --system core.autocrlf false
+# Turn on long path support on Windows
+& git config --system core.longpaths true
 
 ## Install Azul Zulu.
 Write-Host "Installing OpenJDK..."
@@ -117,14 +119,14 @@ $env:JAVA_HOME = $zulu_root
 ## Install Visual C++ 2017 Build Tools.
 Write-Host "Installing Visual C++ 2017 Build Tools..."
 & choco install visualstudio2017buildtools
-& choco install visualstudio2017-workload-vctools
+& choco install visualstudio2017-workload-vctools --params "--add Microsoft.VisualStudio.Component.VC.Tools.ARM --add Microsoft.VisualStudio.Component.VC.Tools.ARM64"
 [Environment]::SetEnvironmentVariable("BAZEL_VC", "C:\Program Files (x86)\Microsoft Visual Studio\2017\BuildTools\VC", "Machine")
 $env:BAZEL_VC = [Environment]::GetEnvironmentVariable("BAZEL_VC", "Machine")
 
 ## Install Visual C++ 2019 Build Tools.
 Write-Host "Installing Visual C++ 2019 Build Tools..."
 & choco install visualstudio2019buildtools
-& choco install visualstudio2019-workload-vctools
+& choco install visualstudio2019-workload-vctools --params "--add Microsoft.VisualStudio.Component.VC.Tools.ARM --add Microsoft.VisualStudio.Component.VC.Tools.ARM64"
 
 ## Install Windows 10 SDK
 ## https://github.com/bazelbuild/continuous-integration/issues/768
@@ -156,7 +158,8 @@ Write-Host "Installing Python packages..."
     requests `
     pyyaml `
     keras_applications `
-    keras_preprocessing
+    keras_preprocessing `
+    pywin32
 
 ## CMake (for rules_foreign_cc).
 Write-Host "Installing CMake..."
@@ -232,12 +235,13 @@ Remove-Item "${android_sdk_root}\tools.old" -Force -Recurse
 ## Install all required Android SDK components.
 & "${android_sdk_root}\tools\bin\sdkmanager.bat" "platform-tools"
 & "${android_sdk_root}\tools\bin\sdkmanager.bat" "build-tools;28.0.2"
-& "${android_sdk_root}\tools\bin\sdkmanager.bat" "build-tools;28.0.3"
-& "${android_sdk_root}\tools\bin\sdkmanager.bat" "build-tools;29.0.0"
 & "${android_sdk_root}\tools\bin\sdkmanager.bat" "build-tools;29.0.2"
 & "${android_sdk_root}\tools\bin\sdkmanager.bat" "build-tools;29.0.3"
+& "${android_sdk_root}\tools\bin\sdkmanager.bat" "build-tools;30.0.1"
 & "${android_sdk_root}\tools\bin\sdkmanager.bat" "platforms;android-24"
 & "${android_sdk_root}\tools\bin\sdkmanager.bat" "platforms;android-28"
+& "${android_sdk_root}\tools\bin\sdkmanager.bat" "platforms;android-29"
+& "${android_sdk_root}\tools\bin\sdkmanager.bat" "platforms;android-30"
 & "${android_sdk_root}\tools\bin\sdkmanager.bat" "extras;android;m2repository"
 
 ## Download and unpack our Git snapshot.
@@ -257,6 +261,9 @@ $req = [system.Net.HttpWebRequest]::Create($url)
 $res = $req.getresponse()
 $res.Close()
 $buildkite_agent_version = $res.ResponseUri.AbsolutePath.TrimStart("/buildkite/agent/releases/tag/v")
+
+## Workaround bug https://github.com/bazelbuild/continuous-integration/issues/1034
+$buildkite_agent_version = "3.22.1"
 
 Write-Host "Downloading Buildkite agent..."
 $buildkite_agent_url = "https://github.com/buildkite/agent/releases/download/v${buildkite_agent_version}/buildkite-agent-windows-amd64-${buildkite_agent_version}.zip"
