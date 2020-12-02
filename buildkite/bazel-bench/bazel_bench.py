@@ -236,7 +236,6 @@ def _ci_step_for_platform_and_commits(
             "--project_source=%s" % project_clone_path,
             "--project_label=%s" % project["project_label"],
             "--platform=%s" % platform,
-            "--collect_memory",
             "--data_directory=%s" % DATA_DIRECTORY,
             "--csv_file_name=%s" % BAZEL_BENCH_RESULT_FILENAME,
             "--collect_json_profile",
